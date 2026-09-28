@@ -32,6 +32,7 @@ class HistDataProvider:
             ts=pd.to_datetime(raw,format="%Y%m%d %H%M%S")
             fixed_est=timezone(timedelta(hours=-5))
             ts=ts.dt.tz_localize(fixed_est).dt.tz_convert("UTC")
+            df["timestamp"]=ts
         else:
             if df.shape[1] < 6: raise ValueError("unsupported comma M1 CSV schema")
             # Common compatible schema: date,time,open,high,low,close,volume
