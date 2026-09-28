@@ -4,5 +4,4 @@ def readiness(checks):
     return {"ready":not missing,"missing":missing,"live_enabled":False if missing else bool(checks.get("live_enabled",False))}
 def assert_not_live():
     import os
-    if os.getenv("ENABLE_LIVE_TRADING","false").lower()=="true":
-        raise RuntimeError("Final gate blocks live trading until an explicit deployment review is completed")
+    if os.getenv("ENABLE_LIVE_TRADING","false").lower()=="true": raise RuntimeError("Final gate blocks live trading pending explicit deployment review")
