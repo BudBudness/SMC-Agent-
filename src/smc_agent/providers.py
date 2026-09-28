@@ -36,15 +36,17 @@ class HistDataProvider:
         else:
             if df.shape[1] < 6: raise ValueError("unsupported comma M1 CSV schema")
             # Common compatible schema: date,time,open,high,low,close,volume
-            raw=df.iloc[:,0].astype(str)+" "+df.iloc[:,1].astype(str)
-            ts=pd.to_datetime(raw,errors="raise").dt.tz_localize("UTC")
-            df=pd.DataFrame({
+            # Compatible CSVs may already contain a single ISO timestamp column.
+            if df.shape[1] >= 7 and str(df.iloc[0,0]).find("-") >= 0 and str(df.iloc[0,0]).find(":") >= 0:
+                ts=pd.to_datetime(df.iloc[:,0],errors="raise",utc=True)
+                cols={"open":df.iloc[:,1],"high":df.iloc[:,2],"low":df.iloc[:,3],"close":df.iloc[:,4],"volume":df.iloc[:,5]}
+            else:
+                raw=df.iloc[:,0].astype(str)+" "+df.iloc[:,1].astype(str)
+                ts=pd.to_datetime(raw,errors="raise",utc=True)
+                cols={"open":df.iloc[:,2],"high":df.iloc[:,3],"low":df.iloc[:,4],"close":df.iloc[:,5],"volume":df.iloc[:,6] if df.shape[1] >= 7 else 0}
+            df=pd.DataFrame({"
                 "timestamp":ts,
-                "open":df.iloc[:,2],
-                "high":df.iloc[:,3],
-                "low":df.iloc[:,4],
-                "close":df.iloc[:,5],
-                "volume":df.iloc[:,6] if df.shape[1] >= 7 else 0,
+                **cols,
             })
         for c in ["open","high","low","close","volume"]: df[c]=pd.to_numeric(df[c],errors="coerce")
         df=df.set_index("timestamp").sort_index()
