@@ -28,3 +28,10 @@ jobs:
           PYTHONPATH=src python scripts/run_intelligence.py data/fixtures/EURUSD_M1_normalized.csv
       - name: Run benchmark contract
         run: PYTHONPATH=src python -m pytest tests/test_pipeline_contract.py -q
+      - name: Run real historical reaction benchmark
+        run: PYTHONPATH=src python scripts/run_event_benchmark.py data/fixtures/EURUSD1.csv
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-research-benchmark
+          path: benchmark-results/eurusd-reaction.json
