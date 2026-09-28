@@ -22,7 +22,7 @@ class HistDataProvider:
         with open(self.path,"r",encoding="utf-8") as f:
             first=f.readline().strip()
         sep=";" if ";" in first else ","
-        df=pd.read_csv(self.path,sep=sep,header=None)
+        df=pd.read_csv(self.path,sep=sep,header=None,skiprows=1 if first.lower().startswith("timestamp") else 0)
         if sep==";":
             if df.shape[1] < 5: raise ValueError("unsupported M1 CSV schema")
             df=df.iloc[:,:6]
