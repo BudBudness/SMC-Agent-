@@ -36,8 +36,8 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     if len(df)<100:
         return build_report(symbol,now,{"status":"INSUFFICIENT_DATA"} ,{},[],{},[
             Hypothesis("insufficient_data",["fewer than 100 source rows"],[],["validated multi-timeframe history"],0.0)])
-    frames={k:_resample(df,v) for k,v in RULES.items()}
-    states={k:structure_state(frames[k]) for k in RULES if len(frames[k])>=8}
+    frames=reconstruct(df)
+    states={k:structure_state(frames[k]) for k in frames if len(frames[k])>=8}
     contradiction=compare(states)
     weekly=states.get("W","NEUTRAL")
     weekly_swings=swings(frames["W"])
