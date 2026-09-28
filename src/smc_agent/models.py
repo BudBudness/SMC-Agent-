@@ -7,20 +7,28 @@ class Direction(str, Enum):
 
 @dataclass
 class Signal:
-    symbol: str
-    direction: Direction
-    weekly_bias: Direction
-    score: float
-    grade: str
-    entry: Optional[float]=None
-    stop: Optional[float]=None
-    t1: Optional[float]=None
-    t2: Optional[float]=None
-    rr: Optional[float]=None
-    reasons: list[str]=field(default_factory=list)
-    status: str="NO TRADE"
+    symbol:str
+    direction:Direction
+    weekly_bias:Direction
+    score:float
+    grade:str
+    entry:Optional[float]=None
+    stop:Optional[float]=None
+    t1:Optional[float]=None
+    t2:Optional[float]=None
+    rr:Optional[float]=None
+    macro_regime:str="UNKNOWN"
+    liquidity_sweep:Optional[dict]=None
+    inducement:Optional[dict]=None
+    choch:bool=False
+    bos:bool=False
+    displacement:str="NONE"
+    fvg:Optional[dict]=None
+    order_block:Optional[dict]=None
+    news_risk:str="UNKNOWN"
+    state:str="WAITING"
+    reasons:list[str]=field(default_factory=list)
+    status:str="NO TRADE"
 
     def as_dict(self):
-        return {"symbol":self.symbol,"direction":self.direction.value,"weekly_bias":self.weekly_bias.value,
-                "score":self.score,"grade":self.grade,"entry":self.entry,"stop":self.stop,
-                "T1":self.t1,"T2":self.t2,"RR":self.rr,"reasons":self.reasons,"status":self.status}
+        return {k:(v.value if isinstance(v,Enum) else v) for k,v in self.__dict__.items()}
