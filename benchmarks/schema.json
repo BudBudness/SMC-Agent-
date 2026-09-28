@@ -1,0 +1,12 @@
+{
+  "type":"object",
+  "required":["symbol","timeframe","start","end","expected_events"],
+  "properties":{
+    "symbol":{"type":"string"},
+    "timeframe":{"type":"string"},
+    "start":{"type":"string"},
+    "end":{"type":"string"},
+    "expected_events":{"type":"array","items":{"type":"string"}},
+    "notes":{"type":"string"}
+  }
+}
