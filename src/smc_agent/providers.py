@@ -1,3 +1,4 @@
+from datetime import timezone, timedelta
 from typing import Protocol
 import pandas as pd
 
@@ -8,18 +9,23 @@ class EconomicCalendarProvider(Protocol):
     def events(self,start=None,end=None): ...
 
 class HistDataProvider:
-    """Reader for HistData Generic ASCII M1 CSV files.
-
-    HistData timestamps are EST without daylight-saving adjustment; this adapter
-    converts them to UTC before exposing the canonical OHLC schema.
-    """
+    """Reader for HistData Generic ASCII M1 CSV files."""
     def __init__(self,path): self.path=path
+
+    @staticmethod
+    def _utc(value):
+        ts=pd.Timestamp(value)
+        return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
     def candles(self,symbol="EURUSD",timeframe="M1",start=None,end=None):
         if timeframe != "M1": raise ValueError("HistDataProvider currently supports M1 only")
-        df=pd.read_csv(self.path,sep=";",header=None,names=["timestamp","open","high","low","close","volume"])
+        df=pd.read_csv(self.path,sep=";",header=None,
+                       names=["timestamp","open","high","low","close","volume"])
         ts=pd.to_datetime(df["timestamp"],format="%Y%m%d %H%M%S")
-        df["timestamp"]=ts.dt.tz_localize("America/New_York",ambiguous="infer",nonexistent="shift_forward").dt.tz_convert("UTC")
+        # HistData explicitly defines timestamps as fixed EST without DST.
+        fixed_est=timezone(timedelta(hours=-5))
+        df["timestamp"]=ts.dt.tz_localize(fixed_est).dt.tz_convert("UTC")
         df=df.set_index("timestamp").sort_index()
-        if start is not None: df=df[df.index>=pd.Timestamp(start,tz="UTC")]
-        if end is not None: df=df[df.index<=pd.Timestamp(end,tz="UTC")]
+        if start is not None: df=df[df.index>=self._utc(start)]
+        if end is not None: df=df[df.index<=self._utc(end)]
         return df[["open","high","low","close","volume"]]
