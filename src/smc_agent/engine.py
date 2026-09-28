@@ -42,8 +42,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     weekly=states.get("W","NEUTRAL")
     weekly_swings=swings(frames["W"])
     zones=map_liquidity(weekly_swings)
-    zones=[dict(z,scope="external" if z is weekly_swings[-1] if weekly_swings else False) for z in zones]
-    for z in zones:z["scope"]="external" if z in zones[-2:] else "internal"
+    for i,z in enumerate(zones): z["scope"]="external" if i >= max(0,len(zones)-2) else "internal"
     sweep_event=sweep(frames["15M"],zones)
     inducement=detect_inducement(zones,sweep_event,{"weekly_bias":weekly})
     shift=choch_bos(frames["15M"],weekly)
