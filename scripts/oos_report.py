@@ -1,3 +1,4 @@
 import json,sys
 from smc_agent.oos import summarize
-print(json.dumps(summarize(json.load(open(sys.argv[1])),indent=2,default=str))
+with open(sys.argv[1],encoding="utf-8") as f: reports=json.load(f)
+print(json.dumps(summarize(reports),indent=2,default=str))
