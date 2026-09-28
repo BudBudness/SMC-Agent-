@@ -1,0 +1,30 @@
+name: Real EURUSD research validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/smc_agent/**"
+      - "scripts/ingest_histdata.py"
+      - ".github/workflows/real-data.yml"
+jobs:
+  real-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[test]"
+      - name: Fetch public EURUSD M1 research fixture
+        run: |
+          mkdir -p data/fixtures
+          curl -L --fail --retry 3 -o data/fixtures/EURUSD1.csv \
+            https://raw.githubusercontent.com/danielfcastro/MLRobotForex/dev/EURUSD/EURUSD1.csv
+      - name: Validate real data
+        run: python scripts/ingest_histdata.py data/fixtures/EURUSD1.csv --out data/fixtures/EURUSD_M1_normalized.csv
+      - name: Run intelligence pipeline
+        run: |
+          PYTHONPATH=src python scripts/run_intelligence.py data/fixtures/EURUSD_M1_normalized.csv
+      - name: Run benchmark contract
+        run: PYTHONPATH=src python -m pytest tests/test_pipeline_contract.py -q
