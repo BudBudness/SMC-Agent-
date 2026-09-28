@@ -2,6 +2,11 @@ name: Long-history MTF reconstruction
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/long-history-mtf.yml"
+      - "scripts/fetch_long_history.py"
+      - "src/smc_agent/timeframes.py"
   schedule:
     - cron: "30 2 * * 1"
 
