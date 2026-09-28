@@ -17,5 +17,5 @@ def risk_valid(entry,stop,equity,risk_pct=0.005,spread=0.0,limits=RiskLimits(),d
     return True
 
 def position_size(equity,entry,stop,risk_pct=0.005):
-    distance=abs(entry-stop)
-    return 0.0 if distance<=0 else equity*risk_pct/distance
+    d=abs(entry-stop)
+    return 0.0 if d<=0 else equity*risk_pct/d
