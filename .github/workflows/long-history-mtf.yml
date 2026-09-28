@@ -1,4 +1,5 @@
 name: Long-history MTF reconstruction
+# header-compatible ingestion
 
 on:
   workflow_dispatch:
