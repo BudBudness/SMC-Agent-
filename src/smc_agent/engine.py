@@ -5,7 +5,7 @@ from .scoring import score,grade
 from .fvg import find_fvg
 from .order_blocks import find_order_blocks
 from .amd import classify_amd
-from .models import Signal,Direction
+from .models import Signal,Direction\nfrom .news_lock import news_lock
 def _resample(df,rule):
     return df.resample(rule).agg({"open":"first","high":"max","low":"min","close":"last"}).dropna()
 def _disp(df):
@@ -25,7 +25,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     mid=(m["D"].high.iloc[-1]+m["D"].low.iloc[-1])/2
     loc=(m["D"].close.iloc[-1]<mid) if bias is Direction.LONG else (m["D"].close.iloc[-1]>mid)
     inducement={"detected":True,"reference":zones[-2]["price"]} if sw and len(zones)>=2 else None
-    nr="LOCKED" if news_events and now is not None else "CLEAR"
+    locked,_=news_lock(news_events,now) if news_events and now is not None else (False,None)\n    nr="LOCKED" if locked else "CLEAR"
     features={"weekly_structure":True,"weekly_location":loc,"liquidity":bool(zones),"inducement":bool(inducement),
       "sweep":bool(sw),"structure_shift":shift["choch"] or shift["bos"],"displacement":disp in {"STRONG","EXTREME"},
       "fvg_ob":bool(fvgs or obs),"premium_discount":loc,"economic":nr=="CLEAR","session":True}
@@ -34,7 +34,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     if sw:
         stop=float(sw["price"]); risk=abs(entry-stop)
         target=entry+risk*2 if bias is Direction.LONG else entry-risk*2
-    return Signal(symbol,bias,bias,sc,g,entry=entry if eligible else None,stop=stop if eligible else None,
+    eligible = eligible and stop is not None and ((bias is Direction.LONG and stop < entry) or (bias is Direction.SHORT and stop > entry))\n    return Signal(symbol,bias,bias,sc,g,entry=entry if eligible else None,stop=stop if eligible else None,
       t1=target if eligible else None,t2=target if eligible else None,rr=2.0 if eligible else None,
       macro_regime=f"WEEKLY_STRUCTURE|4H_{amd}",liquidity_sweep=sw,inducement=inducement,
       choch=shift["choch"],bos=shift["bos"],displacement=disp,fvg=fvgs[-1] if fvgs else None,
