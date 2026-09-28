@@ -1,0 +1,17 @@
+mode: BACKTEST
+initial_equity: 10000
+risk_pct: 0.005
+daily_limit: 0.015
+weekly_limit: 0.03
+max_positions: 1
+max_correlated: 1
+spread: 0.00002
+slippage: 0.00001
+commission_per_unit: 0.0
+stop_first_on_same_bar: true
+walk_forward:
+  train_bars: 500
+  test_bars: 100
+  step_bars: 100
+news_lock_minutes: 15
+live_trading: false
