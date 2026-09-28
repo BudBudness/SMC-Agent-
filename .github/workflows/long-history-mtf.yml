@@ -37,6 +37,9 @@ jobs:
           print(json.dumps(result,indent=2))
           with open("data/long_history/mtf_coverage.json","w") as f: json.dump(result,f,indent=2)
           PY
+      - name: Validate timeframe depth
+        run: |
+          PYTHONPATH=src python -c 'from smc_agent.providers import HistDataProvider; from smc_agent.timeframes import reconstruct; df=HistDataProvider("data/long_history/EURUSD_M1_normalized.csv").candles(); f=reconstruct(df); print({k:len(v) for k,v in f.items()}); assert len(f["12M"]) >= 20; assert len(f["6M"]) >= 40; assert len(f["3M"]) >= 80'
       - name: Run intelligence pipeline
         run: PYTHONPATH=src python scripts/run_intelligence.py data/long_history/EURUSD_M1_normalized.csv
       - name: Upload long-history research artifacts
