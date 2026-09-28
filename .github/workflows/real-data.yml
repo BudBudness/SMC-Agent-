@@ -30,6 +30,13 @@ jobs:
         run: PYTHONPATH=src python -m pytest tests/test_pipeline_contract.py -q
       - name: Run real historical reaction benchmark
         run: PYTHONPATH=src python scripts/run_event_benchmark.py data/fixtures/EURUSD1.csv
+      - name: Run multi-episode labelled benchmark
+        run: PYTHONPATH=src python scripts/run_labelled_benchmark.py data/fixtures/EURUSD1.csv
+      - name: Upload labelled benchmark result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-labelled-benchmark
+          path: benchmark-results/labelled-eurusd.json
       - name: Upload benchmark result
         uses: actions/upload-artifact@v4
         with:
