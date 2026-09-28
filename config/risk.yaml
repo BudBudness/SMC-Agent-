@@ -1,0 +1,7 @@
+risk_per_trade: 0.005
+max_daily_loss: 0.015
+max_weekly_loss: 0.03
+max_simultaneous_trades: 1
+max_correlated_exposure: 1
+news_lock_before_minutes: 15
+news_lock_after_minutes: 15
