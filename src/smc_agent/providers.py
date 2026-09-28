@@ -23,25 +23,28 @@ class HistDataProvider:
             first=f.readline().strip()
         sep=";" if ";" in first else ","
         df=pd.read_csv(self.path,sep=sep,header=None)
-        if df.shape[1] < 5: raise ValueError("unsupported M1 CSV schema")
-        if df.shape[1] >= 6:
+        if sep==";":
+            if df.shape[1] < 5: raise ValueError("unsupported M1 CSV schema")
             df=df.iloc[:,:6]
+            while df.shape[1] < 6: df[df.shape[1]] = 0
             df.columns=["timestamp","open","high","low","close","volume"]
-        else:
-            df=df.iloc[:,:5]
-            df.columns=["timestamp","open","high","low","close"]
-            df["volume"]=0
-        raw=df["timestamp"].astype(str)
-        try:
+            raw=df["timestamp"].astype(str)
             ts=pd.to_datetime(raw,format="%Y%m%d %H%M%S")
             fixed_est=timezone(timedelta(hours=-5))
             ts=ts.dt.tz_localize(fixed_est).dt.tz_convert("UTC")
-        except (ValueError,TypeError):
-            ts=pd.to_datetime(raw+" "+df.iloc[:,1].astype(str),errors="raise")
-            ts=ts.dt.tz_localize("UTC") if ts.dt.tz is None else ts.dt.tz_convert("UTC")
-            df["open"]=df.iloc[:,2]; df["high"]=df.iloc[:,3]; df["low"]=df.iloc[:,4]; df["close"]=df.iloc[:,5]
-            if df.shape[1)>6: df["volume"]=df.iloc[:,6]
-        df["timestamp"]=ts
+        else:
+            if df.shape[1] < 6: raise ValueError("unsupported comma M1 CSV schema")
+            # Common compatible schema: date,time,open,high,low,close,volume
+            raw=df.iloc[:,0].astype(str)+" "+df.iloc[:,1].astype(str)
+            ts=pd.to_datetime(raw,errors="raise").dt.tz_localize("UTC")
+            df=pd.DataFrame({
+                "timestamp":ts,
+                "open":df.iloc[:,2],
+                "high":df.iloc[:,3],
+                "low":df.iloc[:,4],
+                "close":df.iloc[:,5],
+                "volume":df.iloc[:,6] if df.shape[1] >= 7 else 0,
+            })
         for c in ["open","high","low","close","volume"]: df[c]=pd.to_numeric(df[c],errors="coerce")
         df=df.set_index("timestamp").sort_index()
         if start is not None: df=df[df.index>=self._utc(start)]
