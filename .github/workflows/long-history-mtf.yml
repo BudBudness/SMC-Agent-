@@ -1,0 +1,43 @@
+name: Long-history MTF reconstruction
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * 1"
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install research dependencies
+        run: python -m pip install -e ".[test]" histdata-fetcher
+      - name: Fetch EURUSD M1 history
+        run: PYTHONPATH=src python scripts/fetch_long_history.py --start 2003-05-01 --end 2026-09-28 --out data/long_history/EURUSD_M1.csv
+      - name: Validate long history
+        run: PYTHONPATH=src python scripts/ingest_histdata.py data/long_history/EURUSD_M1.csv --out data/long_history/EURUSD_M1_normalized.csv
+      - name: Run full multi-timeframe reconstruction
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from smc_agent.providers import HistDataProvider
+          from smc_agent.timeframes import reconstruct, coverage
+          df=HistDataProvider("data/long_history/EURUSD_M1_normalized.csv").candles()
+          frames=reconstruct(df)
+          result={"source_rows":len(df),"source_start":df.index[0].isoformat(),"source_end":df.index[-1].isoformat(),"coverage":coverage(frames)}
+          print(json.dumps(result,indent=2))
+          with open("data/long_history/mtf_coverage.json","w") as f: json.dump(result,f,indent=2)
+          PY
+      - name: Run intelligence pipeline
+        run: PYTHONPATH=src python scripts/run_intelligence.py data/long_history/EURUSD_M1_normalized.csv
+      - name: Upload long-history research artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-long-history-mtf
+          path: |
+            data/long_history/mtf_coverage.json
+            data/long_history/EURUSD_M1_normalized.csv
