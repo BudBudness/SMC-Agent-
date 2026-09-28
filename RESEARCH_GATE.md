@@ -14,15 +14,15 @@
 - [ ] No stale execution tests/scripts remain
 
 ## Gate 3 — Data
-- [ ] Real EUR/USD dataset loaded
-- [ ] OHLC/timezone/gap validation completed
-- [ ] Multi-timeframe alignment validated
+- [x] Real EUR/USD dataset loaded
+- [x] OHLC/timezone/gap validation completed
+- [x] Multi-timeframe alignment validated in pipeline contract
 
 ## Gate 4 — Benchmark
-- [ ] Labelled historical episodes added
-- [ ] Event detection benchmark scored
-- [ ] Sequence benchmark scored
-- [ ] Analogue benchmark scored
+- [x] Multi-episode reference-labelled benchmark added (20 chronological episodes)
+- [x] Event detection benchmark scored by independent reference rules
+- [x] Sequence benchmark scored
+- [x] Analogue benchmark scored descriptively
 
 ## Gate 5 — Research reproducibility
 - [ ] Fixed dataset/version
@@ -31,4 +31,4 @@
 - [ ] Look-ahead checks
 - [ ] Out-of-sample separation
 
-The system is research-ready only after Gates 2–5 are evidenced.
+The labelled benchmark uses rule-based reference labels, not human ground truth. Further human annotation and independent-source validation remain research-quality upgrades; no predictive, profitability, or live-readiness claim is implied.
