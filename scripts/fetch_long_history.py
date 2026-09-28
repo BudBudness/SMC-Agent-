@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 import pandas as pd
-from histdata_fetcher import HistDataFetcher
+from histdata_fetcher import fetch_data
 
 def main():
     p=argparse.ArgumentParser()
@@ -12,8 +12,10 @@ def main():
     p.add_argument("--out",default="data/long_history/EURUSD_M1.csv")
     a=p.parse_args()
     out=Path(a.out); out.parent.mkdir(parents=True,exist_ok=True)
-    fetcher=HistDataFetcher()
-    df=fetcher.fetch("eurusd",timeframe="1min",start_date=a.start,end_date=a.end)
+    result=fetch_data("EURUSD",a.start,a.end,"1min",output_format=None,max_workers=4)
+    if result.failed_periods:
+        print({"failed_periods":[str(x) for x in result.failed_periods]})
+    df=result.data
     if df.empty: raise SystemExit("No EURUSD M1 data returned")
     df=df.rename(columns={"datetime":"timestamp"})
     df["timestamp"]=pd.to_datetime(df["timestamp"],utc=True)
