@@ -1,0 +1,6 @@
+mode: PAPER
+score_threshold: 60
+execution_threshold: 80
+min_rr: 2.0
+swing_left: 2
+swing_right: 2
