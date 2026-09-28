@@ -1,10 +1,15 @@
-def position_size(equity,risk_fraction,entry,stop):
-    distance=abs(entry-stop)
-    if distance<=0:return 0.0
-    return equity*risk_fraction/distance
+from dataclasses import dataclass
 
-def risk_ok(daily_pnl,weekly_pnl,equity,open_positions,cfg):
-    if daily_pnl <= -equity*cfg["max_daily_loss"]: return False,"daily_loss_limit"
-    if weekly_pnl <= -equity*cfg["max_weekly_loss"]: return False,"weekly_loss_limit"
-    if open_positions >= cfg["max_simultaneous_trades"]: return False,"position_limit"
-    return True,"ok"
+@dataclass(frozen=True)
+class RiskLimits:
+    trade_pct:float=0.005
+    daily_pct:float=0.015
+    weekly_pct:float=0.03
+    max_positions:int=1
+    max_correlated:int=1
+    max_spread:float=0.0003
+
+def risk_valid(entry,stop,equity,risk_pct=0.005,spread=0.0,limits=RiskLimits()):
+    if equity<=0 or entry is None or stop is None:return False
+    if entry==stop or spread>limits.max_spread:return False
+    return abs(entry-stop)>0 and 0<risk_pct<=limits.trade_pct
