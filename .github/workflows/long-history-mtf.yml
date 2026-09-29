@@ -86,13 +86,29 @@ jobs:
           PY
           PYTHONPATH=src python scripts/run_intelligence.py data/long_history/EURUSD_M1_intelligence_window.csv
 
+      - name: Build compact dashboard research dataset
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import pandas as pd
+          src="data/long_history/EURUSD_M1_normalized.csv"
+          out="data/long_history/EURUSD_M1_dashboard.csv"
+          df=pd.read_csv(src,parse_dates=["timestamp"])
+          df=df.sort_values("timestamp")
+          cutoff=df["timestamp"].max()-pd.DateOffset(days=90)
+          window=df[df["timestamp"]>=cutoff]
+          window.to_csv(out,index=False)
+          print({"dashboard_rows":len(window),"start":window["timestamp"].min().isoformat(),"end":window["timestamp"].max().isoformat()})
+          PY
+
       - name: Publish dashboard research dataset
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gzip -c data/long_history/EURUSD_M1_normalized.csv > data/long_history/EURUSD_M1_normalized.csv.gz
+          gzip -c data/long_history/EURUSD_M1_dashboard.csv > data/long_history/EURUSD_M1_dashboard.csv.gz
           gh release view research-data --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create research-data --repo "${{ github.repository }}" --title "Research dataset" --notes "Generated EUR/USD long-history research dataset for the Henryz SMC Intelligence dashboard." --latest=false
           gh release upload research-data data/long_history/EURUSD_M1_normalized.csv.gz --repo "${{ github.repository }}" --clobber
+          gh release upload research-data data/long_history/EURUSD_M1_dashboard.csv.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
 
