@@ -13,6 +13,9 @@ on:
   schedule:
     - cron: "30 2 * * 1"
 
+permissions:
+  contents: write
+
 jobs:
   reconstruct:
     runs-on: ubuntu-latest
@@ -64,7 +67,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gzip -c data/long_history/EURUSD_M1_normalized.csv > data/long_history/EURUSD_M1_normalized.csv.gz
-          gh release view research-data --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create research-data --repo "${{ github.repository }}" --title "Research dataset" --notes "Generated EUR/USD long-history research dataset for the SMC Intelligence dashboard." --latest=false
+          gh release view research-data --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create research-data --repo "${{ github.repository }}" --title "Research dataset" --notes "Generated EUR/USD long-history research dataset for the Henryz SMC Intelligence dashboard." --latest=false
           gh release upload research-data data/long_history/EURUSD_M1_normalized.csv.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
