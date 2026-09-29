@@ -1,4 +1,13 @@
 """SMC Agent — research-first market intelligence dashboard."""
+import sys
+from pathlib import Path
+
+# Streamlit Cloud runs this file from dashboard/; expose the repository src package.
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
 import pandas as pd
 import streamlit as st
 from smc_agent.engine import analyze
