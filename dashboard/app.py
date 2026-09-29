@@ -35,20 +35,59 @@ def card(label,value): return f'<div class="card"><div class="card-label">{label
 st.markdown("""<div class="hero"><div class="eyebrow">Market intelligence · research workspace</div>
 <h1>SMC Intelligence</h1><p>Reconstruct structure, investigate liquidity, correlate events, compare historical episodes and challenge hypotheses.</p></div>""",unsafe_allow_html=True)
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=2)
 def load_research_dataset():
+    """Load only the recent research window from the persistent compressed release.
+
+    The release remains the full 2003+ EUR/USD dataset. The dashboard deliberately
+    analyzes a bounded recent window so Streamlit Cloud does not materialize 8.3M
+    M1 rows plus every reconstructed timeframe in memory at once.
+    """
     import gzip
     from io import BytesIO
     from urllib.request import urlopen
-    url="https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_normalized.csv.gz"
-    with urlopen(url,timeout=120) as response:
-        payload=response.read()
+
+    url = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_normalized.csv.gz"
+    chunks = []
+    total_rows = 0
+    source_start = None
+    source_end = None
+    cutoff = None
+
+    with urlopen(url, timeout=120) as response:
+        payload = response.read()
+
     with gzip.GzipFile(fileobj=BytesIO(payload)) as gz:
-        frame=pd.read_csv(gz)
-    frame["timestamp"]=pd.to_datetime(frame["timestamp"],utc=True,errors="raise")
-    frame=frame.set_index("timestamp").sort_index()
-    required=["open","high","low","close"]
-    return frame[required+([ "volume"] if "volume" in frame.columns else [])].dropna(subset=required)
+        for chunk in pd.read_csv(
+            gz,
+            usecols=["timestamp", "open", "high", "low", "close", "volume"],
+            chunksize=250_000,
+        ):
+            chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True, errors="raise")
+            chunk = chunk.sort_values("timestamp")
+            total_rows += len(chunk)
+            if source_start is None and len(chunk):
+                source_start = chunk["timestamp"].iloc[0]
+            if len(chunk):
+                source_end = chunk["timestamp"].iloc[-1]
+                cutoff = source_end - pd.DateOffset(days=180)
+            if cutoff is not None:
+                recent = chunk[chunk["timestamp"] >= cutoff]
+                if len(recent):
+                    chunks.append(recent)
+
+    if not chunks:
+        raise ValueError("The persistent EUR/USD research dataset contains no usable rows.")
+
+    frame = pd.concat(chunks, ignore_index=True)
+    frame = frame.drop_duplicates("timestamp").sort_values("timestamp").set_index("timestamp")
+    required = ["open", "high", "low", "close"]
+    frame = frame[required + (["volume"] if "volume" in frame.columns else [])].dropna(subset=required)
+    frame.attrs["source_rows"] = total_rows
+    frame.attrs["source_start"] = source_start.isoformat() if source_start is not None else None
+    frame.attrs["source_end"] = source_end.isoformat() if source_end is not None else None
+    frame.attrs["analysis_window"] = "latest 180 days"
+    return frame
 
 def load_uploaded(uploaded):
     preview=pd.read_csv(uploaded,nrows=2)
