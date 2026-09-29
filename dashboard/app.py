@@ -117,7 +117,7 @@ if source=="EUR/USD long history":
     try:
         df=load_research_dataset()
     except Exception as exc:
-        st.warning("The persistent research dataset is not published yet. The long-history GitHub workflow must complete once before the dashboard can load it.")
+        st.error("The persistent EUR/USD research dataset could not be loaded.")
         st.caption(str(exc))
         st.stop()
 elif not uploaded:
@@ -209,11 +209,11 @@ with hypotheses_tab:
 with data_tab:
     st.markdown("### Dataset & research integrity")
     a,b,c,d=st.columns(4)
-    a.metric("Source rows",f"{len(df):,}"); b.metric("Source start",df.index.min().strftime("%Y-%m-%d"))
-    c.metric("Source end",df.index.max().strftime("%Y-%m-%d")); d.metric("Timeframes",len(frames))
+    a.metric("Analysis rows",f"{len(df):,}"); b.metric("Full source rows",f"{df.attrs.get('source_rows', len(df)):,}")
+    c.metric("Source range",f"{df.attrs.get('source_start', df.index.min().isoformat())[:10]} → {df.attrs.get('source_end', df.index.max().isoformat())[:10]}"); d.metric("Timeframes",len(frames))
     coverage=pd.DataFrame({"timeframe":list(frames),"bars":[len(frames[x]) for x in frames]})
     st.dataframe(coverage,use_container_width=True,hide_index=True)
-    st.caption("Higher-timeframe structure is reconstructed chronologically from the selected source dataset. Evidence counts describe recorded evidence, not predictive accuracy.")
+    st.caption(f"Higher-timeframe structure is reconstructed chronologically from the {df.attrs.get('analysis_window', 'selected')} analysis window. Full source: {df.attrs.get('source_rows', len(df)):,} EUR/USD M1 rows. Evidence counts describe recorded evidence, not predictive accuracy.")
 
 if st.session_state.get("raw_report"):
     st.divider(); st.markdown("### Machine-readable report"); st.json(report)
