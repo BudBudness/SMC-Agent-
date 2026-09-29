@@ -37,12 +37,7 @@ st.markdown("""<div class="hero"><div class="eyebrow">Market intelligence · res
 
 @st.cache_data(show_spinner=False, max_entries=2)
 def load_research_dataset():
-    """Load only the recent research window from the persistent compressed release.
-
-    The release remains the full 2003+ EUR/USD dataset. The dashboard deliberately
-    analyzes a bounded recent window so Streamlit Cloud does not materialize 8.3M
-    M1 rows plus every reconstructed timeframe in memory at once.
-    """
+    """Load a bounded recent window from the persistent compressed release."""
     import gzip
     from urllib.request import urlopen
 
@@ -54,25 +49,24 @@ def load_research_dataset():
     cutoff = None
 
     with urlopen(url, timeout=120) as response:
-        # Stream the compressed release directly; do not materialize the archive.
         with gzip.GzipFile(fileobj=response) as gz:
-        for chunk in pd.read_csv(
-            gz,
-            usecols=["timestamp", "open", "high", "low", "close", "volume"],
-            chunksize=250_000,
-        ):
-            chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True, errors="raise")
-            chunk = chunk.sort_values("timestamp")
-            total_rows += len(chunk)
-            if source_start is None and len(chunk):
-                source_start = chunk["timestamp"].iloc[0]
-            if len(chunk):
-                source_end = chunk["timestamp"].iloc[-1]
-                cutoff = source_end - pd.DateOffset(days=90)
-            if cutoff is not None:
-                recent = chunk[chunk["timestamp"] >= cutoff]
-                if len(recent):
-                    chunks.append(recent)
+            for chunk in pd.read_csv(
+                gz,
+                usecols=["timestamp", "open", "high", "low", "close", "volume"],
+                chunksize=250_000,
+            ):
+                chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True, errors="raise")
+                chunk = chunk.sort_values("timestamp")
+                total_rows += len(chunk)
+                if source_start is None and len(chunk):
+                    source_start = chunk["timestamp"].iloc[0]
+                if len(chunk):
+                    source_end = chunk["timestamp"].iloc[-1]
+                    cutoff = source_end - pd.DateOffset(days=90)
+                if cutoff is not None:
+                    recent = chunk[chunk["timestamp"] >= cutoff]
+                    if len(recent):
+                        chunks.append(recent)
 
     if not chunks:
         raise ValueError("The persistent EUR/USD research dataset contains no usable rows.")
