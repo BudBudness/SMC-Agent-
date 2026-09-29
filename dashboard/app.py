@@ -37,48 +37,26 @@ st.markdown("""<div class="hero"><div class="eyebrow">Market intelligence · res
 
 @st.cache_data(show_spinner=False, max_entries=2)
 def load_research_dataset():
-    """Load a bounded recent window from the persistent compressed release."""
+    """Load the dashboard-sized research release without downloading the full archive."""
     import gzip
     from urllib.request import urlopen
 
-    url = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_normalized.csv.gz"
-    chunks = []
-    total_rows = 0
-    source_start = None
-    source_end = None
-    cutoff = None
-
-    with urlopen(url, timeout=120) as response:
+    url = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_dashboard.csv.gz"
+    with urlopen(url, timeout=60) as response:
         with gzip.GzipFile(fileobj=response) as gz:
-            for chunk in pd.read_csv(
+            frame = pd.read_csv(
                 gz,
                 usecols=["timestamp", "open", "high", "low", "close", "volume"],
-                chunksize=250_000,
-            ):
-                chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True, errors="raise")
-                chunk = chunk.sort_values("timestamp")
-                total_rows += len(chunk)
-                if source_start is None and len(chunk):
-                    source_start = chunk["timestamp"].iloc[0]
-                if len(chunk):
-                    source_end = chunk["timestamp"].iloc[-1]
-                    cutoff = source_end - pd.DateOffset(days=90)
-                if cutoff is not None:
-                    recent = chunk[chunk["timestamp"] >= cutoff]
-                    if len(recent):
-                        chunks.append(recent)
+            )
 
-    if not chunks:
-        raise ValueError("The persistent EUR/USD research dataset contains no usable rows.")
-
-    frame = pd.concat(chunks, ignore_index=True)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="raise")
     frame = frame.drop_duplicates("timestamp").sort_values("timestamp").set_index("timestamp")
     required = ["open", "high", "low", "close"]
     frame = frame[required + (["volume"] if "volume" in frame.columns else [])].dropna(subset=required)
-    frame.attrs["source_rows"] = total_rows
-    frame.attrs["source_start"] = source_start.isoformat() if source_start is not None else None
-    frame.attrs["source_end"] = source_end.isoformat() if source_end is not None else None
-    frame.attrs["analysis_window"] = "latest 90 days"
+    frame.attrs["source_rows"] = len(frame)
+    frame.attrs["source_start"] = frame.index.min().isoformat()
+    frame.attrs["source_end"] = frame.index.max().isoformat()
+    frame.attrs["analysis_window"] = "latest dashboard research window"
     return frame
 
 def load_uploaded(uploaded):
