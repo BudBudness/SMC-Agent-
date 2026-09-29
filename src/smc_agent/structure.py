@@ -12,16 +12,17 @@ def swings(df, left=2, right=2):
     prior_low = low.shift(1).rolling(left, min_periods=left).min()
     future_low = low.shift(-1).rolling(right, min_periods=right).min()
 
-    high_positions = high.index[high.gt(prior_high) & high.ge(future_high)]
-    low_positions = low.index[low.lt(prior_low) & low.le(future_low)]
+    high_mask = high.gt(prior_high) & high.ge(future_high)
+    low_mask = low.lt(prior_low) & low.le(future_low)
+    index_values = df.index.to_numpy()
 
     out = []
-    for pos in high_positions:
-        i = df.index.get_loc(pos)
-        out.append(("HIGH", pos, float(high.loc[pos]), df.index[i + right]))
-    for pos in low_positions:
-        i = df.index.get_loc(pos)
-        out.append(("LOW", pos, float(low.loc[pos]), df.index[i + right]))
+    for i in high_mask.to_numpy().nonzero()[0]:
+        if i + right < len(index_values):
+            out.append(("HIGH", index_values[i], float(high.iloc[i]), index_values[i + right]))
+    for i in low_mask.to_numpy().nonzero()[0]:
+        if i + right < len(index_values):
+            out.append(("LOW", index_values[i], float(low.iloc[i]), index_values[i + right]))
     out.sort(key=lambda x: x[1])
     return out
 
