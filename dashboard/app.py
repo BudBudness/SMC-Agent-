@@ -35,35 +35,65 @@ def card(label,value): return f'<div class="card"><div class="card-label">{label
 st.markdown("""<div class="hero"><div class="eyebrow">Market intelligence · research workspace</div>
 <h1>SMC Intelligence</h1><p>Reconstruct structure, investigate liquidity, correlate events, compare historical episodes and challenge hypotheses.</p></div>""",unsafe_allow_html=True)
 
+@st.cache_data(show_spinner=False)
+def load_research_dataset():
+    import gzip
+    from io import BytesIO
+    from urllib.request import urlopen
+    url="https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_normalized.csv.gz"
+    with urlopen(url,timeout=120) as response:
+        payload=response.read()
+    with gzip.GzipFile(fileobj=BytesIO(payload)) as gz:
+        frame=pd.read_csv(gz)
+    frame["timestamp"]=pd.to_datetime(frame["timestamp"],utc=True,errors="raise")
+    frame=frame.set_index("timestamp").sort_index()
+    required=["open","high","low","close"]
+    return frame[required+([ "volume"] if "volume" in frame.columns else [])].dropna(subset=required)
+
+def load_uploaded(uploaded):
+    preview=pd.read_csv(uploaded,nrows=2)
+    time_col="timestamp" if "timestamp" in preview.columns else "time" if "time" in preview.columns else None
+    if not time_col: raise ValueError("CSV needs a timestamp or time column.")
+    uploaded.seek(0); frame=pd.read_csv(uploaded)
+    frame[time_col]=pd.to_datetime(frame[time_col],utc=True,errors="raise")
+    frame=frame.set_index(time_col).sort_index()
+    required=["open","high","low","close"]; missing=[x for x in required if x not in frame.columns]
+    if missing: raise ValueError("Missing OHLC columns: "+", ".join(missing))
+    return frame[required+([ "volume"] if "volume" in frame.columns else [])].dropna(subset=required)
+
 with st.sidebar:
     st.markdown("### Research input")
-    uploaded=st.file_uploader("Upload OHLC CSV",type=["csv"])
-    st.caption("Expected: timestamp/time, open, high, low, close. Volume is optional.")
+    source=st.radio("Dataset",["EUR/USD long history","Upload CSV"],index=0)
+    uploaded=st.file_uploader("Upload OHLC CSV",type=["csv"]) if source=="Upload CSV" else None
+    if source=="Upload CSV":
+        st.caption("Expected: timestamp/time, open, high, low, close. Volume is optional.")
+    else:
+        st.caption("Persistent EUR/USD research dataset · 2003 → latest validated run")
     st.divider()
     st.markdown("### Investigation")
     st.checkbox("Show raw report",value=False,key="raw_report")
     st.caption("Research interface only. No trading or execution.")
 
-if not uploaded:
+if source=="EUR/USD long history":
+    try:
+        df=load_research_dataset()
+    except Exception as exc:
+        st.warning("The persistent research dataset is not published yet. The long-history GitHub workflow must complete once before the dashboard can load it.")
+        st.caption(str(exc))
+        st.stop()
+elif not uploaded:
     st.markdown("### Start an investigation")
     a,b,c=st.columns(3)
     a.markdown(card("Reconstruct","12M → 1M"),unsafe_allow_html=True)
     b.markdown(card("Investigate","Structure + liquidity"),unsafe_allow_html=True)
     c.markdown(card("Challenge","Evidence + contradictions"),unsafe_allow_html=True)
-    st.info("Upload a historical OHLC dataset to populate the intelligence workspace.")
+    st.info("Choose EUR/USD long history, or upload a historical OHLC dataset.")
     st.stop()
-
-try:
-    preview=pd.read_csv(uploaded,nrows=2)
-    time_col="timestamp" if "timestamp" in preview.columns else "time" if "time" in preview.columns else None
-    if not time_col: st.error("CSV needs a timestamp or time column."); st.stop()
-    uploaded.seek(0); df=pd.read_csv(uploaded)
-    df[time_col]=pd.to_datetime(df[time_col],utc=True,errors="raise"); df=df.set_index(time_col).sort_index()
-    required=["open","high","low","close"]; missing=[x for x in required if x not in df.columns]
-    if missing: st.error("Missing OHLC columns: "+", ".join(missing)); st.stop()
-    df=df[required+([ "volume"] if "volume" in df.columns else [])].dropna(subset=required)
-except Exception as exc:
-    st.error(f"Could not read the dataset: {exc}"); st.stop()
+else:
+    try:
+        df=load_uploaded(uploaded)
+    except Exception as exc:
+        st.error(f"Could not read the dataset: {exc}"); st.stop()
 
 report=analyze(df).as_dict(); frames=reconstruct(df)
 state=report.get("market_state",{}); states=state.get("timeframes",{})
@@ -134,7 +164,7 @@ with hypotheses_tab:
                 a.markdown("**Supporting evidence**"); a.write(h.get("evidence",[]) or "None recorded.")
                 a.markdown("**Contradictions**"); a.write(h.get("contradictions",[]) or "None recorded.")
                 b.markdown("**Invalidation conditions**"); b.write(h.get("invalidation",[]) or "None recorded.")
-                b.metric("Research confidence",f"{float(h.get('confidence',0))*100:.0f}%")
+                b.metric("Evidence items",len(h.get("evidence",[]) or []))
     else: st.info("No hypotheses were generated.")
 
 with data_tab:
@@ -144,7 +174,7 @@ with data_tab:
     c.metric("Source end",df.index.max().strftime("%Y-%m-%d")); d.metric("Timeframes",len(frames))
     coverage=pd.DataFrame({"timeframe":list(frames),"bars":[len(frames[x]) for x in frames]})
     st.dataframe(coverage,use_container_width=True,hide_index=True)
-    st.caption("Higher-timeframe structure is reconstructed chronologically from the uploaded source timeframe. Research confidence is not predictive accuracy.")
+    st.caption("Higher-timeframe structure is reconstructed chronologically from the selected source dataset. Evidence counts describe recorded evidence, not predictive accuracy.")
 
 if st.session_state.get("raw_report"):
     st.divider(); st.markdown("### Machine-readable report"); st.json(report)
