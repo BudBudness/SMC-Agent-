@@ -44,7 +44,6 @@ def load_research_dataset():
     M1 rows plus every reconstructed timeframe in memory at once.
     """
     import gzip
-    from io import BytesIO
     from urllib.request import urlopen
 
     url = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_M1_normalized.csv.gz"
@@ -55,9 +54,8 @@ def load_research_dataset():
     cutoff = None
 
     with urlopen(url, timeout=120) as response:
-        payload = response.read()
-
-    with gzip.GzipFile(fileobj=BytesIO(payload)) as gz:
+        # Stream the compressed release directly; do not materialize the archive.
+        with gzip.GzipFile(fileobj=response) as gz:
         for chunk in pd.read_csv(
             gz,
             usecols=["timestamp", "open", "high", "low", "close", "volume"],
@@ -70,7 +68,7 @@ def load_research_dataset():
                 source_start = chunk["timestamp"].iloc[0]
             if len(chunk):
                 source_end = chunk["timestamp"].iloc[-1]
-                cutoff = source_end - pd.DateOffset(days=180)
+                cutoff = source_end - pd.DateOffset(days=90)
             if cutoff is not None:
                 recent = chunk[chunk["timestamp"] >= cutoff]
                 if len(recent):
@@ -86,7 +84,7 @@ def load_research_dataset():
     frame.attrs["source_rows"] = total_rows
     frame.attrs["source_start"] = source_start.isoformat() if source_start is not None else None
     frame.attrs["source_end"] = source_end.isoformat() if source_end is not None else None
-    frame.attrs["analysis_window"] = "latest 180 days"
+    frame.attrs["analysis_window"] = "latest 90 days"
     return frame
 
 def load_uploaded(uploaded):
@@ -134,7 +132,14 @@ else:
     except Exception as exc:
         st.error(f"Could not read the dataset: {exc}"); st.stop()
 
-report=analyze(df).as_dict(); frames=reconstruct(df)
+with st.spinner("Building the market-intelligence workspace…"):
+    try:
+        report = analyze(df).as_dict()
+        frames = reconstruct(df)
+    except Exception as exc:
+        st.error("The research engine could not build the dashboard state.")
+        st.exception(exc)
+        st.stop()
 state=report.get("market_state",{}); states=state.get("timeframes",{})
 contradictions=state.get("contradictions",[]); events=report.get("events",[])
 hypotheses=report.get("hypotheses",[]); liquidity=report.get("liquidity",{})
