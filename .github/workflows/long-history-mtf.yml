@@ -59,11 +59,19 @@ jobs:
         run: PYTHONPATH=src python scripts/evaluate_mtf_intelligence.py data/long_history/EURUSD_M1_normalized.csv --out benchmark-results/mtf_substantive_evaluation.json
       - name: Run intelligence pipeline
         run: PYTHONPATH=src python scripts/run_intelligence.py data/long_history/EURUSD_M1_normalized.csv
+      - name: Publish dashboard research dataset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gzip -c data/long_history/EURUSD_M1_normalized.csv > data/long_history/EURUSD_M1_normalized.csv.gz
+          gh release view research-data --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create research-data --repo "${{ github.repository }}" --title "Research dataset" --notes "Generated EUR/USD long-history research dataset for the SMC Intelligence dashboard." --latest=false
+          gh release upload research-data data/long_history/EURUSD_M1_normalized.csv.gz --repo "${{ github.repository }}" --clobber
+          gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
+          gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
       - name: Upload long-history research artifacts
         uses: actions/upload-artifact@v4
         with:
           name: eurusd-long-history-mtf
           path: |
             data/long_history/mtf_coverage.json
-            data/long_history/EURUSD_M1_normalized.csv
             benchmark-results/mtf_substantive_evaluation.json
