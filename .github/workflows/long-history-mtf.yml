@@ -9,6 +9,7 @@ on:
       - "scripts/fetch_long_history.py"
       - "src/smc_agent/timeframes.py"
       - "src/smc_agent/providers.py"
+      - "src/smc_agent/structure.py"
       - "scripts/evaluate_mtf_intelligence.py"
   schedule:
     - cron: "30 2 * * 1"
