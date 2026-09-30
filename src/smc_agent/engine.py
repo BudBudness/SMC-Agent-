@@ -23,9 +23,19 @@ def _displacement(df):
     return "EXTREME" if ratio>=2.5 else "STRONG" if ratio>=1.8 else "MODERATE" if ratio>=1.3 else "WEAK"
 
 def _location(df):
-    if df.empty:return "UNKNOWN"
-    mid=(float(df.high.iloc[-1])+float(df.low.iloc[-1]))/2
+    if df.empty:
+        return "UNKNOWN"
+    points=swings(df)
+    highs=[p[2] for p in points if p[0]=="HIGH"]
+    lows=[p[2] for p in points if p[0]=="LOW"]
+    if not highs or not lows:
+        return "UNKNOWN"
+    high=max(highs[-3:])
+    low=min(lows[-3:])
+    if high<=low:
+        return "UNKNOWN"
     close=float(df.close.iloc[-1])
+    mid=(high+low)/2
     return "DISCOUNT" if close<mid else "PREMIUM" if close>mid else "EQUILIBRIUM"
 
 def analyze(df,symbol="EURUSD",news_events=None,now=None):
@@ -38,8 +48,9 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     contradiction=compare(states)
     weekly=states.get("W","NEUTRAL")
     weekly_swings=swings(frames["W"])
-    zones=map_liquidity(weekly_swings)
-    for i,z in enumerate(zones): z["scope"]="external" if i >= max(0,len(zones)-2) else "internal"
+    intraday_swings=swings(frames["15M"])
+    zones=map_liquidity(weekly_swings,scope="external")
+    zones.extend(map_liquidity(intraday_swings[-40:],scope="internal"))
     sweep_event=sweep(frames["15M"],zones)
     inducement=detect_inducement(zones,sweep_event,{"weekly_bias":weekly})
     shift=choch_bos(frames["15M"],weekly)
@@ -47,7 +58,10 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     fvgs=find_fvg(frames["15M"]); obs=find_order_blocks(frames["15M"])
     amd=classify_amd(frames["4H"])
     events=[]
-    if zones: events.append({"name":"liquidity_formation","time":zones[-1]["time"],"timeframe":"W","kind":"observation","evidence":{"count":len(zones)}})
+    if weekly_swings:
+        events.append({"name":"liquidity_formation","time":weekly_swings[-1][1],"timeframe":"W","kind":"observation","evidence":{"external_count":len([z for z in zones if z["scope"]=="external"])}})
+    if intraday_swings:
+        events.append({"name":"internal_liquidity_formation","time":intraday_swings[-1][1],"timeframe":"15M","kind":"observation","evidence":{"internal_count":len([z for z in zones if z["scope"]=="internal"])}})
     if inducement.get("detected"): events.append({"name":"inducement","time":df.index[-1],"timeframe":"15M","kind":"interpretation","evidence":inducement})
     if sweep_event: events.append({"name":"sweep","time":sweep_event["time"],"timeframe":"15M","kind":"observation","evidence":sweep_event})
     if disp!="NONE": events.append({"name":"displacement","time":df.index[-1],"timeframe":"15M","kind":"observation","evidence":{"strength":disp}})
