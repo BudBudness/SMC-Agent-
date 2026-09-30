@@ -154,7 +154,8 @@ with structure:
     sf=frames[selected]; x,y,z=st.columns(3)
     x.metric("Bars",f"{len(sf):,}"); y.metric("Start",sf.index.min().strftime("%Y-%m-%d")); z.metric("End",sf.index.max().strftime("%Y-%m-%d"))
     st.line_chart(sf[["close"]].tail(1000),height=420,use_container_width=True)
-    st.json(states.get(selected,"NEUTRAL"))
+    selected_state = states.get(selected, "NEUTRAL")
+    st.write(selected_state)
 
 with liquidity_tab:
     lcol,ecol=st.columns([1,1.35])
