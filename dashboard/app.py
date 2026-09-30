@@ -11,6 +11,7 @@ if str(SRC) not in sys.path:
 import pandas as pd
 import streamlit as st
 from smc_agent.engine import analyze
+from smc_agent.pipeline import run as run_pipeline
 from smc_agent.timeframes import reconstruct, ANALYSIS_TIMEFRAMES
 
 st.set_page_config(page_title="SMC Intelligence",page_icon="◈",layout="wide",initial_sidebar_state="expanded")
@@ -129,7 +130,8 @@ else:
 
 with st.spinner("Building the market-intelligence workspace…"):
     try:
-        report = analyze(df).as_dict()
+        pipeline_result = run_pipeline(df)
+        report = pipeline_result["report"]
         frames = reconstruct(df)
         if source=="EUR/USD long history":
             frames = mtf_frames
