@@ -1,12 +1,34 @@
-def map_liquidity(swings):
-    return [{"kind":"BSL" if s[0]=="HIGH" else "SSL","price":s[2],"time":s[1]} for s in swings]
+"""Liquidity mapping and chronological sweep observation."""
 
-def sweep(df,zones):
-    if df.empty:return None
-    r=df.iloc[-1]
-    for z in sorted(zones,key=lambda x:abs(r.close-x["price"])):
-        if z["kind"]=="BSL" and r.high>z["price"] and r.close<z["price"]:
-            return {"kind":"BSL","price":z["price"],"time":df.index[-1]}
-        if z["kind"]=="SSL" and r.low<z["price"] and r.close>z["price"]:
-            return {"kind":"SSL","price":z["price"],"time":df.index[-1]}
+def map_liquidity(swing_points, scope="external"):
+    return [
+        {
+            "kind": "BSL" if point[0] == "HIGH" else "SSL",
+            "price": float(point[2]),
+            "time": point[1],
+            "scope": scope,
+            "strength": "structural",
+        }
+        for point in swing_points
+    ]
+
+def sweep(df, zones, lookback=96):
+    """Find the latest confirmed liquidity raid in the available window.
+
+    This is deliberately an observation: without a subsequent candle it is not
+    upgraded to a confirmed structural reversal.
+    """
+    if df.empty or not zones:
+        return None
+    start=max(0,len(df)-lookback)
+    for i in range(len(df)-1,start-1,-1):
+        r=df.iloc[i]
+        ts=df.index[i]
+        candidates=sorted(zones,key=lambda z:abs(float(r.close)-float(z["price"])))
+        for z in candidates:
+            price=float(z["price"])
+            if z["kind"]=="BSL" and float(r.high)>price and float(r.close)<price:
+                return {"kind":"BSL","price":price,"time":ts,"scope":z.get("scope","unknown"),"confirmation":"rejection_close"}
+            if z["kind"]=="SSL" and float(r.low)<price and float(r.close)>price:
+                return {"kind":"SSL","price":price,"time":ts,"scope":z.get("scope","unknown"),"confirmation":"rejection_close"}
     return None
