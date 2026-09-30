@@ -22,6 +22,7 @@ class EvidenceLedger:
         item=asdict(e) if hasattr(e,"__dataclass_fields__") else dict(e)
         for k in ("supports","contradicts","invalidates"): item.setdefault(k,[])
         item.setdefault("provenance",{})
+        if not item["provenance"]: item["provenance"]={"status":"UNSPECIFIED","note":"Legacy evidence item; canonical engine supplies method/source context."}
         item.setdefault("strength","UNRESOLVED")
         self.items.append(item)
     def for_claim(self,claim_id): return [x for x in self.items if x.get("claim_id")==claim_id]
