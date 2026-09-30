@@ -7,6 +7,8 @@
 - [x] Dataset validator
 - [x] Benchmark contract
 - [x] CI workflow
+- [x] Dashboard MTF artifact regression test
+- [x] Hypothesis output no longer ranks or assigns unsupported confidence scores
 
 ## Gate 2 — Verification
 - [x] GitHub Actions research runs completed successfully
@@ -24,6 +26,8 @@ Verified on commit `d1c8d309e7cc23c536e39c33f7e6ff96f1f5d492`:
 - [x] OHLC/timezone/gap validation completed
 - [x] Multi-timeframe alignment validated in pipeline contract
 - [x] Long-history dataset published as a versioned research release
+- [x] Full-history compact MTF dashboard artifact published and schema-validated
+- [x] Dashboard higher-timeframe state is sourced from the full-history artifact, not the 90-day M1 visualization window
 
 Long-history dataset:
 - Source: HistData EUR/USD M1
@@ -31,7 +35,7 @@ Long-history dataset:
 - Start: 2003-05-01 00:00 UTC
 - End: 2026-09-24 19:58 UTC
 - Release tag: `research-data`
-- Assets: normalized M1 dataset, MTF coverage, substantive MTF evaluation
+- Assets: normalized M1 dataset, compact dashboard M1 dataset, full-history compact MTF dashboard artifact, MTF coverage, substantive MTF evaluation
 
 MTF coverage:
 - 12M: 25
