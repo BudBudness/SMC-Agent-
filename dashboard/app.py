@@ -207,7 +207,7 @@ with liquidity_tab:
                 st.markdown(f'<div class="event"><div class="event-name">{event.get("name","event").upper()}</div><div class="event-meta">{event.get("timeframe","")} · {event.get("kind","")}</div></div>',unsafe_allow_html=True)
         else: st.info("No SMC events were detected.")
 
-with analogue_tab:\n    st.markdown("### Historical analogue research")\n    st.caption("Analogue matching requires a labelled historical episode set; current dashboard displays available event-study evidence without ranking outcomes.")\n    reaction=(report.get("macro",{}) or {}).get("event_reaction_study",{})\n    st.json({"event_study_summary":reaction})\n\nwith hypotheses_tab:
+with macro_tab:\n    st.markdown("### Macro context")\n    macro=report.get("macro",{}) or {}\n    if macro: st.json(macro)\n    else: st.info("No macro events supplied.")\n\nwith analogue_tab:\n    st.markdown("### Historical analogue research")\n    st.caption("Analogue matching requires a labelled historical episode set; current dashboard displays available event-study evidence without ranking outcomes.")\n    reaction=(report.get("macro",{}) or {}).get("event_reaction_study",{})\n    st.json({"event_study_summary":reaction})\n\nwith hypotheses_tab:
     st.markdown("### Competing hypotheses")
     if hypotheses:
         for h in hypotheses:
@@ -219,7 +219,7 @@ with analogue_tab:\n    st.markdown("### Historical analogue research")\n    st.
                 b.metric("Evidence items",len(h.get("evidence",[]) or []))
     else: st.info("No hypotheses were generated.")
 
-with data_tab:
+with evidence_tab:\n    st.markdown("### Evidence ledger")\n    evidence=[]\n    for event in events:\n        evidence.append({"claim_id":event.get("name"),"observation":event.get("kind"),"source":event.get("timeframe"),"timestamp":event.get("time"),"method":"research event detector"})\n    if evidence: st.dataframe(pd.DataFrame(evidence),use_container_width=True,hide_index=True)\n    else: st.info("No evidence records available.")\n\nwith data_tab:
     st.markdown("### Dataset & research integrity")
     a,b,c,d=st.columns(4)
     full_rows = mtf_payload["source_rows"] if source=="EUR/USD long history" else df.attrs.get("source_rows", len(df))
