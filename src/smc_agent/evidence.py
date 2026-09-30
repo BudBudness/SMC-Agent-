@@ -35,5 +35,8 @@ class EvidenceLedger:
             if e.get("strength") not in self.VALID_STRENGTH: errors.append((i,"invalid evidence strength"))
             if not isinstance(e.get("provenance"),dict): errors.append((i,"provenance must be an object"))
             if e.get("confidence") is not None:
-                errors.append((i,"numeric confidence is deprecated; use evidence strength"))
+                try:
+                    c=float(e["confidence"])
+                    if not 0 <= c <= 1: errors.append((i,"confidence outside 0..1"))
+                except (TypeError,ValueError): errors.append((i,"invalid confidence metadata"))
         return {"valid":not errors,"errors":errors,"count":len(self.items)}
