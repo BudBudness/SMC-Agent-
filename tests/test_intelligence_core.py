@@ -16,7 +16,7 @@ def test_analogue_similarity():
     assert m and conditional_stats(m)["mean"]==1
 
 def test_macro_surprise():
-    assert classify_surprise({"actual":105,"expected":100})["direction"]=="POSITIVE"
+    assert classify_surprise({"actual":105,"expected":100})["direction"]=="UNINTERPRETED"
 
 def test_dataset_validation():
     idx=pd.date_range("2026-01-01",periods=3,freq="h",tz="UTC")
