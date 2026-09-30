@@ -1,11 +1,14 @@
 from dataclasses import dataclass,asdict
+from typing import Optional
+
 @dataclass
 class Hypothesis:
     name:str
     evidence:list
     contradictions:list
     invalidation:list
-    confidence:float
+    confidence:Optional[float]=None
+
 @dataclass
 class IntelligenceReport:
     symbol:str
@@ -20,11 +23,11 @@ class IntelligenceReport:
 
 def build_report(symbol,timestamp,state,liquidity,events,macro,hypotheses):
     hs=[asdict(h) if hasattr(h,"__dataclass_fields__") else h for h in hypotheses]
-    hs.sort(key=lambda h:float(h.get("confidence",0)),reverse=True)
     conflict=len(state.get("contradictions",[])) if isinstance(state,dict) else 0
-    top=hs[0] if hs else None
-    if not top: conclusion="No hypotheses generated."
-    elif conflict and conflict>=2: conclusion="Structural conflict remains unresolved across timeframes."
-    elif float(top.get("confidence",0))<0.5: conclusion="Evidence is insufficient for a dominant hypothesis."
-    else: conclusion=f"Leading hypothesis: {top['name']}; review supporting evidence and invalidation conditions."
+    if not hs:
+        conclusion="No hypotheses generated."
+    elif conflict:
+        conclusion="Structural conflict remains unresolved across timeframes."
+    else:
+        conclusion="Multiple hypotheses remain under investigation; review evidence, contradictions and invalidation conditions."
     return IntelligenceReport(symbol,timestamp,state,liquidity,events,macro,hs,conclusion)
