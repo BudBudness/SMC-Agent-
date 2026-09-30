@@ -59,6 +59,23 @@ def load_research_dataset():
     frame.attrs["analysis_window"] = "latest dashboard research window"
     return frame
 
+@st.cache_data(show_spinner=False, max_entries=2)
+def load_full_history_mtf():
+    import gzip, json
+    from urllib.request import urlopen
+
+    url = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data/EURUSD_MTF_dashboard.json.gz"
+    with urlopen(url, timeout=60) as response:
+        with gzip.GzipFile(fileobj=response) as gz:
+            payload = json.loads(gz.read().decode("utf-8"))
+    frames = {}
+    for tf, meta in payload["timeframes"].items():
+        rows = meta.get("ohlc_tail", [])
+        frame = pd.DataFrame(rows, columns=["timestamp","open","high","low","close"])
+        frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True)
+        frames[tf] = frame.set_index("timestamp")[["open","high","low","close"]]
+    return payload, frames
+
 def load_uploaded(uploaded):
     preview=pd.read_csv(uploaded,nrows=2)
     time_col="timestamp" if "timestamp" in preview.columns else "time" if "time" in preview.columns else None
@@ -86,6 +103,12 @@ with st.sidebar:
 if source=="EUR/USD long history":
     try:
         df=load_research_dataset()
+        try:
+            mtf_payload, mtf_frames = load_full_history_mtf()
+        except Exception as exc:
+            st.error("The full-history MTF research artifact could not be loaded.")
+            st.caption(str(exc))
+            st.stop()
     except Exception as exc:
         st.error("The persistent EUR/USD research dataset could not be loaded.")
         st.caption(str(exc))
@@ -108,6 +131,16 @@ with st.spinner("Building the market-intelligence workspace…"):
     try:
         report = analyze(df).as_dict()
         frames = reconstruct(df)
+        if source=="EUR/USD long history":
+            frames = mtf_frames
+            full_states = {tf: meta["state"] for tf, meta in mtf_payload["timeframes"].items()}
+            state0 = report.get("market_state", {})
+            state0["timeframes"] = full_states
+            state0["weekly_bias"] = full_states.get("W", "NEUTRAL")
+            state0["contradictions"] = mtf_payload.get("contradictions", [])
+            state0["authority"] = "W"
+            report["market_state"] = state0
+            report["conclusion"] = ("Structural conflict remains unresolved across timeframes." if mtf_payload.get("contradictions") else "No higher-timeframe structural contradiction is present in the validated MTF state.")
     except Exception as exc:
         st.error("The research engine could not build the dashboard state.")
         st.exception(exc)
@@ -187,11 +220,19 @@ with hypotheses_tab:
 with data_tab:
     st.markdown("### Dataset & research integrity")
     a,b,c,d=st.columns(4)
-    a.metric("Analysis rows",f"{len(df):,}"); b.metric("Full source rows",f"{df.attrs.get('source_rows', len(df)):,}")
-    c.metric("Source range",f"{df.attrs.get('source_start', df.index.min().isoformat())[:10]} → {df.attrs.get('source_end', df.index.max().isoformat())[:10]}"); d.metric("Timeframes",len(frames))
-    coverage=pd.DataFrame({"timeframe":list(frames),"bars":[len(frames[x]) for x in frames]})
-    st.dataframe(coverage,use_container_width=True,hide_index=True)
-    st.caption(f"Higher-timeframe structure is reconstructed chronologically from the {df.attrs.get('analysis_window', 'selected')} analysis window. Full source: {df.attrs.get('source_rows', len(df)):,} EUR/USD M1 rows. Evidence counts describe recorded evidence, not predictive accuracy.")
+    full_rows = mtf_payload["source_rows"] if source=="EUR/USD long history" else df.attrs.get("source_rows", len(df))
+    full_start = mtf_payload["source_start"] if source=="EUR/USD long history" else df.attrs.get("source_start", df.index.min().isoformat())
+    full_end = mtf_payload["source_end"] if source=="EUR/USD long history" else df.attrs.get("source_end", df.index.max().isoformat())
+    a.metric("Analysis rows",f"{len(df):,}"); b.metric("Full source rows",f"{full_rows:,}")
+    c.metric("Source range",f"{full_start[:10]} → {full_end[:10]}"); d.metric("Timeframes",len(frames))
+    if source=="EUR/USD long history":
+        coverage=pd.DataFrame({"timeframe":list(mtf_payload["timeframes"]), "full_history_bars":[mtf_payload["timeframes"][x]["bars"] for x in mtf_payload["timeframes"]], "visualization_bars":[len(frames[x]) for x in mtf_payload["timeframes"]]})
+        st.dataframe(coverage,use_container_width=True,hide_index=True)
+        st.caption("Higher-timeframe states come from the full validated EUR/USD history. Charts use bounded recent OHLC tails from the same full-history reconstruction. Recent M1 analysis remains a separate microstructure window.")
+    else:
+        coverage=pd.DataFrame({"timeframe":list(frames),"bars":[len(frames[x]) for x in frames]})
+        st.dataframe(coverage,use_container_width=True,hide_index=True)
+        st.caption("Uploaded data is reconstructed from the supplied dataset. Evidence counts describe recorded evidence, not predictive accuracy.")
 
 if st.session_state.get("raw_report"):
     st.divider(); st.markdown("### Machine-readable report"); st.json(report)
