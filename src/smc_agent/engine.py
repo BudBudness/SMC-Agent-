@@ -53,7 +53,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     if fvgs: events.append({"name":"fvg","time":fvgs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":fvgs[-1]})
     if obs: events.append({"name":"order_block","time":obs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":obs[-1]})
     events=sequence(events)["events"]
-    macro=enrich(event_context(news_events))
+    macro={"events":enrich(event_context(news_events))}
     evidence=[]
     if weekly!="NEUTRAL": evidence.append({"claim":"weekly_structure","observation":weekly,"source":"confirmed swing sequence","timeframe":"W"})
     if sweep_event: evidence.append({"claim":"liquidity_sweep","observation":sweep_event["kind"],"source":"chronological liquidity raid","timeframe":"15M"})
