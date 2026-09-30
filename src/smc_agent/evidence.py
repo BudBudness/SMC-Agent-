@@ -33,5 +33,6 @@ class EvidenceLedger:
             if e.get("strength") not in self.VALID_STRENGTH: errors.append((i,"invalid evidence strength"))
             if not isinstance(e.get("provenance"),dict): errors.append((i,"provenance must be an object"))
             if e.get("timestamp") is not None and not hasattr(e["timestamp"],"isoformat"): errors.append((i,"timestamp must be datetime-like"))
+            # Legacy confidence metadata is accepted for compatibility but is not interpreted as predictive confidence.
         return {"valid":not errors,"errors":errors,"count":len(self.items)}
     def as_list(self): return list(self.items)
