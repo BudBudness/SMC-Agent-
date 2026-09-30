@@ -10,10 +10,12 @@ from .contradictions import compare
 from .timeframes import reconstruct
 from .inducement import detect as detect_inducement
 from .sequencing import sequence
-from .intelligence import build_report,Hypothesis
+from .intelligence import build_report
 from .macro import event_context
 from .macro_reaction import enrich
 from .event_study import event_reactions,summarize
+from .evidence import Evidence,EvidenceLedger
+from .analogue import research as analogue_research
 
 def _location(df):
     points=swings(df)
@@ -24,11 +26,32 @@ def _location(df):
     close=float(df.close.iloc[-1]); mid=(hi+lo)/2
     return "DISCOUNT" if close<mid else "PREMIUM" if close>mid else "EQUILIBRIUM"
 
-def analyze(df,symbol="EURUSD",news_events=None,now=None):
+def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df):
+    ledger=EvidenceLedger()
+    if weekly!="NEUTRAL":
+        ledger.add(Evidence("weekly_structure",weekly,"confirmed swing sequence","W",df.index[-1],
+                            "confirmed two-swing HH/HL or LH/LL sequence",strength="HIGH"))
+    if sweep_event:
+        ledger.add(Evidence("liquidity_sweep",sweep_event.get("kind","observed"),"chronological liquidity raid","15M",
+                            sweep_event.get("time"),"liquidity approach/take/rejection",strength="MODERATE"))
+    if latest_disp:
+        ledger.add(Evidence("displacement",latest_disp["strength"],"local range/body expansion","15M",
+                            latest_disp["time"],"rolling pre-event median normalization",strength="MODERATE"))
+    if shift.get("choch") or shift.get("bos"):
+        ledger.add(Evidence("structure_break",f"CHoCH={shift.get('choch')} BOS={shift.get('bos')}",
+                            "close-confirmed swing break","15M",df.index[-1],
+                            "confirmed swing reference and close beyond level",strength="MODERATE"))
+    if contradictions:
+        ledger.add(Evidence("cross_timeframe_conflict",str(len(contradictions)),"cross-timeframe state comparison",
+                            "MTF",df.index[-1],"hierarchical timeframe comparison",contradicts=["continuation"],strength="HIGH"))
+    return ledger
+
+def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=None):
     df=df.sort_index()
     if len(df)<100:
-        return build_report(symbol,now,{"status":"INSUFFICIENT_DATA"},{"zones":[],"sweep":None,"inducement":None},[],{},[
-            Hypothesis("insufficient_data",["fewer than 100 source rows"],["full research state unavailable"],["provide a validated multi-timeframe history"])])
+        return build_report(symbol,now,{"status":"INSUFFICIENT_DATA"},{"zones":[],"sweep":None,"inducement":None},[],{},
+            [{"name":"insufficient_data","evidence":[],"contradictions":[],"invalidation":["provide a validated multi-timeframe history"]}],
+            [],{"status":"INSUFFICIENT_SAMPLE","matches":[],"samples":0})
     frames=reconstruct(df)
     states={k:structure_state(frames[k]) for k in frames if len(frames[k])>=8}
     contradiction=compare(states)
@@ -54,27 +77,24 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     if obs: events.append({"name":"order_block","time":obs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":obs[-1]})
     events=sequence(events)["events"]
     macro={"events":enrich(event_context(news_events))}
-    evidence=[]
-    if weekly!="NEUTRAL": evidence.append({"claim":"weekly_structure","observation":weekly,"source":"confirmed swing sequence","timeframe":"W"})
-    if sweep_event: evidence.append({"claim":"liquidity_sweep","observation":sweep_event["kind"],"source":"chronological liquidity raid","timeframe":"15M"})
-    if latest_disp: evidence.append({"claim":"displacement","observation":latest_disp["strength"],"source":"local range/body expansion","timeframe":"15M"})
-    if shift.get("choch") or shift.get("bos"): evidence.append({"claim":"structure_break","observation":f"CHoCH={shift.get('choch')} BOS={shift.get('bos')}","source":"close-confirmed swing break","timeframe":"15M"})
-    contradictions=contradiction["contradictions"]
-    hypotheses=[
-        Hypothesis("continuation",evidence,contradictions,["Weekly structure changes","key liquidity is invalidated"]),
-        Hypothesis("structural_conflict",[],[] if contradictions else ["no cross-timeframe conflict detected"],["conflicting timeframe resolves"])
-    ]
+    ledger=_evidence(weekly,sweep_event,latest_disp,shift,contradiction["contradictions"],df)
+    evidence=ledger.as_list()
+    macro["event_reaction_study"]=summarize(event_reactions(frames["15M"],events))
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
-           "contradictions":contradictions,"authority":"W",
+           "contradictions":contradiction["contradictions"],"authority":"W",
            "displacement":latest_disp["strength"] if latest_disp else "NONE",
            "fvg_count":len(fvgs),"order_block_count":len(obs)}
-    event_reaction_summary={}
-    try:
-        reaction=event_reactions(frames["15M"],events)
-        event_reaction_summary=summarize(reaction)
-    except Exception:
-        event_reaction_summary={"samples":0}
-    macro["event_reaction_study"]=event_reaction_summary
+    pattern={"regime":states.get("12M"),"weekly_bias":weekly,"location":state["daily_location"],
+             "sweep":bool(sweep_event),"displacement":latest_disp["strength"] if latest_disp else "NONE",
+             "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),"amd":amd.get("phase")}
+    ar=analogue_research(historical_episodes,pattern)
+    contradictions=contradiction["contradictions"]
+    hypotheses=[
+        {"name":"continuation","evidence":[e["claim_id"] for e in evidence],"contradictions":[c["explanation"] for c in contradictions],
+         "invalidation":["Weekly structure changes","key liquidity is invalidated"]},
+        {"name":"structural_conflict","evidence":[],"contradictions":[c["explanation"] for c in contradictions],
+         "invalidation":["conflicting timeframe resolves"]}
+    ]
     liquidity={"zones":zones,"sweep":sweep_event,"inducement":inducement,
                "external_zone_count":len(ws),"internal_zone_count":len(ins[-40:])}
-    return build_report(symbol,now or df.index[-1],state,liquidity,events,macro,hypotheses)
+    return build_report(symbol,now or df.index[-1],state,liquidity,events,macro,hypotheses,evidence,ar)
