@@ -28,7 +28,7 @@ class EvidenceLedger:
     def validate(self):
         errors=[]
         for i,e in enumerate(self.items):
-            for k in ("claim_id","observation","source","provenance"):
+            for k in ("claim_id","observation","source"):
                 if not e.get(k): errors.append((i,f"missing {k}"))
             if e.get("strength") not in self.VALID_STRENGTH: errors.append((i,"invalid evidence strength"))
             if not isinstance(e.get("provenance"),dict): errors.append((i,"provenance must be an object"))
