@@ -11,6 +11,7 @@ on:
       - "src/smc_agent/providers.py"
       - "src/smc_agent/structure.py"
       - "scripts/evaluate_mtf_intelligence.py"
+      - "scripts/build_dashboard_mtf.py"
   schedule:
     - cron: "30 2 * * 1"
 
@@ -86,6 +87,9 @@ jobs:
           PY
           PYTHONPATH=src python scripts/run_intelligence.py data/long_history/EURUSD_M1_intelligence_window.csv
 
+      - name: Build full-history compact MTF dashboard artifact
+        run: PYTHONPATH=src python scripts/build_dashboard_mtf.py data/long_history/EURUSD_M1_normalized.csv --out data/long_history/EURUSD_MTF_dashboard.json.gz
+
       - name: Build compact dashboard research dataset
         run: |
           PYTHONPATH=src python - <<'PY'
@@ -109,6 +113,7 @@ jobs:
           gh release view research-data --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create research-data --repo "${{ github.repository }}" --title "Research dataset" --notes "Generated EUR/USD long-history research dataset for the Henryz SMC Intelligence dashboard." --latest=false
           gh release upload research-data data/long_history/EURUSD_M1_normalized.csv.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/EURUSD_M1_dashboard.csv.gz --repo "${{ github.repository }}" --clobber
+          gh release upload research-data data/long_history/EURUSD_MTF_dashboard.json.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
 
@@ -119,3 +124,4 @@ jobs:
           path: |
             data/long_history/mtf_coverage.json
             benchmark-results/mtf_substantive_evaluation.json
+            data/long_history/EURUSD_MTF_dashboard.json.gz
