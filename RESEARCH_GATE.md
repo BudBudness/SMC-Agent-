@@ -3,6 +3,11 @@
 ## Gate 1 — Code
 - [x] Execution architecture removed
 - [x] Canonical intelligence pipeline
+- [x] Structural displacement detector with local baseline
+- [x] FVG and order-block lifecycle semantics
+- [x] 4H AMD evidence classifier with UNCLASSIFIED state
+- [x] Event-study integration into intelligence report
+- [x] Dashboard macro, analogue, evidence and dataset surfaces
 - [x] Stable report schema
 - [x] Dataset validator
 - [x] Benchmark contract
@@ -63,4 +68,4 @@ MTF coverage:
 - [x] Look-ahead checks
 - [x] Out-of-sample separation
 
-The labelled benchmark uses rule-based reference labels, not human ground truth. Independent-source cross-validation and human annotation remain research-quality upgrades. No predictive, profitability, or live-readiness claim is implied.
+Every dashboard investigation now carries dataset lineage, MTF coverage, report-schema validation and confirmed-swing look-ahead policy.\n\nThe labelled benchmark uses rule-based reference labels, not human ground truth. Independent-source cross-validation and human annotation remain research-quality upgrades. No predictive, profitability, or live-readiness claim is implied.
