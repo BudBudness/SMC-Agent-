@@ -69,3 +69,13 @@ MTF coverage:
 - [x] Out-of-sample separation
 
 Every dashboard investigation now carries dataset lineage, MTF coverage, report-schema validation and confirmed-swing look-ahead policy.\n\nThe labelled benchmark uses rule-based reference labels, not human ground truth. Independent-source cross-validation and human annotation remain research-quality upgrades. No predictive, profitability, or live-readiness claim is implied.
+
+
+## Final empirical-quality controls
+
+- Human-annotation benchmark schema is included under `benchmarks/human_annotation_schema.json`.
+- Rule-generated benchmark labels are explicitly separated from human ground truth.
+- Evidence records require provenance and qualitative evidence strength; numeric confidence is not a research requirement.
+- Historical analogue statistics disclose sample size and remain descriptive only.
+- Macro observations retain event fields for actual/expected/previous/importance/time and must carry source provenance when populated.
+- No research conclusion is promoted to prediction, recommendation, profitability, or execution.
