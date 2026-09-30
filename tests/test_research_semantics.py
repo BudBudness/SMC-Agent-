@@ -14,7 +14,7 @@ def test_fvg_has_lifecycle_fields():
 
 def test_order_blocks_have_lifecycle_fields():
     idx=pd.date_range("2026-01-01",periods=4,freq="h",tz="UTC")
-    df=pd.DataFrame({"open":[2,1,1.5,1.6],"high":[2.1,1.6,2.3,2.4],"low":[1.8,.9,1.4,1.5],"close":[1.9,1.5,2.2,2.3]},index=idx)
+    df=pd.DataFrame({"open":[2,1.2,1.5,1.6],"high":[2.1,1.6,2.3,2.4],"low":[1.8,.9,1.4,1.5],"close":[1.9,1.0,2.2,2.3]},index=idx)
     obs=find_order_blocks(df)
     assert obs
     assert {"formed_at","status"} <= set(obs[0])
