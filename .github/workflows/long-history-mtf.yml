@@ -90,6 +90,23 @@ jobs:
       - name: Build full-history compact MTF dashboard artifact
         run: PYTHONPATH=src python scripts/build_dashboard_mtf.py data/long_history/EURUSD_M1_normalized.csv --out data/long_history/EURUSD_MTF_dashboard.json.gz
 
+      - name: Validate full-history dashboard MTF artifact
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          path=Path("data/long_history/EURUSD_MTF_dashboard.json.gz")
+          with gzip.open(path,"rt",encoding="utf-8") as f:
+              artifact=json.load(f)
+          expected=("12M","6M","3M","W","D","4H","1H","15M","5M","1M")
+          assert artifact["source_rows"] >= 8000000
+          assert tuple(artifact["timeframes"]) == expected
+          assert all(artifact["timeframes"][tf]["bars"] > 0 for tf in expected)
+          assert all(artifact["timeframes"][tf]["state"] in {"LONG","SHORT","NEUTRAL"} for tf in expected)
+          assert artifact["source_start"] < artifact["source_end"]
+          print({"validation":"PASS","source_rows":artifact["source_rows"],"states":{tf:artifact["timeframes"][tf]["state"] for tf in expected}})
+          PY
+
       - name: Build compact dashboard research dataset
         run: |
           PYTHONPATH=src python - <<'PY'
