@@ -164,7 +164,7 @@ m2.markdown(card("Contradictions",len(contradictions)),unsafe_allow_html=True)
 m3.markdown(card("Detected events",len(events)),unsafe_allow_html=True)
 m4.markdown(card("Hypotheses",len(hypotheses)),unsafe_allow_html=True)
 
-overview,structure,liquidity_tab,hypotheses_tab,data_tab=st.tabs(["Overview","Structure","Liquidity & Events","Hypotheses","Research Data"])
+overview,structure,liquidity_tab,macro_tab,hypotheses_tab,evidence_tab,data_tab=st.tabs(["Overview","Structure","Liquidity & Events","Macro Context","Hypotheses","Evidence","Research Data"])
 
 with overview:
     left,right=st.columns([1.65,1])
