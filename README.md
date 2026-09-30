@@ -1,6 +1,6 @@
-# SMC Agent — Market Intelligence Engine
+# Henryz SMC Intelligence — Market Investigation & Intelligence System
 
-SMC Agent is an investigation and intelligence system for reconstructing market structure, liquidity, Smart Money Concepts events, macro context, historical analogues, competing hypotheses, and evidence.
+Henryz SMC Intelligence is an investigation and intelligence system for reconstructing market structure, liquidity, Smart Money Concepts events, macro context, historical analogues, competing hypotheses, and evidence.
 
 ## Core pipeline
 
