@@ -13,10 +13,6 @@ from .intelligence import build_report,Hypothesis
 from .macro import event_context
 from .macro_reaction import enrich
 
-RULES={"12M":"12ME","6M":"6ME","3M":"3ME","W":"W","D":"D","4H":"4h","1H":"1h","15M":"15min","5M":"5min","1M":"1min"}
-
-def _resample(df,rule):
-    return df.resample(rule).agg({"open":"first","high":"max","low":"min","close":"last"}).dropna()
 
 def _displacement(df):
     if len(df)<25:return "NONE"
@@ -66,8 +62,8 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None):
     if shift.get("choch") or shift.get("bos"): evidence.append(f"15M structure event CHoCH={shift.get('choch')} BOS={shift.get('bos')}")
     contradictions=contradiction["contradictions"]
     hypotheses=[
-        Hypothesis("continuation",evidence,contradictions,["Weekly structure changes","key liquidity is invalidated"],min(1.0,len(evidence)/4)),
-        Hypothesis("structural_conflict",[],[] if contradictions else ["no cross-timeframe conflict detected"],["conflicting timeframe resolves"],min(1.0,len(contradictions)/3)),
+        Hypothesis("continuation",evidence,contradictions,["Weekly structure changes","key liquidity is invalidated"]),
+        Hypothesis("structural_conflict",[],[] if contradictions else ["no cross-timeframe conflict detected"],["conflicting timeframe resolves"]),
     ]
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
            "contradictions":contradictions,"authority":"W"}
