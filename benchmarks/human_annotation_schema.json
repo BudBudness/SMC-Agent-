@@ -1,0 +1,16 @@
+{
+  "schema_version":"1.0",
+  "purpose":"Human-annotated benchmark for Henryz SMC Intelligence research validation.",
+  "status":"template",
+  "required_fields":["episode_id","source","symbol","start","end","timeframes","labels","annotator"],
+  "labels":{
+    "sweep":["BSL","SSL","NONE","UNCERTAIN"],
+    "displacement":["WEAK","MODERATE","STRONG","EXTREME","NONE","UNCERTAIN"],
+    "choch":["BULLISH","BEARISH","NONE","UNCERTAIN"],
+    "bos":["BULLISH","BEARISH","NONE","UNCERTAIN"],
+    "fvg":["BULLISH","BEARISH","NONE","UNCERTAIN"],
+    "order_block":["BULLISH","BEARISH","NONE","UNCERTAIN"],
+    "amd":["ACCUMULATION","MANIPULATION","DISTRIBUTION","UNCLASSIFIED","UNCERTAIN"]
+  },
+  "rules":["Annotate only information visible at the episode timestamp.","Record UNCERTAIN rather than forcing a label.","Keep source, timestamp and annotator identity with every episode.","Do not use future price movement to define the label."]
+}
