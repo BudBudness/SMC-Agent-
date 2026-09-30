@@ -14,7 +14,7 @@ from smc_agent.engine import analyze
 from smc_agent.pipeline import run as run_pipeline
 from smc_agent.timeframes import reconstruct, ANALYSIS_TIMEFRAMES
 
-st.set_page_config(page_title="SMC Intelligence",page_icon="◈",layout="wide",initial_sidebar_state="expanded")
+st.set_page_config(page_title="Henryz SMC Intelligence",page_icon="◈",layout="wide",initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -34,7 +34,7 @@ def cls(v): return str(v or "NEUTRAL").lower()
 def card(label,value): return f'<div class="card"><div class="card-label">{label}</div><div class="card-value">{value}</div></div>'
 
 st.markdown("""<div class="hero"><div class="eyebrow">Market intelligence · research workspace</div>
-<h1>SMC Intelligence</h1><p>Reconstruct structure, investigate liquidity, correlate events, compare historical episodes and challenge hypotheses.</p></div>""",unsafe_allow_html=True)
+<h1>Henryz SMC Intelligence</h1><p>Reconstruct structure, investigate liquidity, correlate events, compare historical episodes and challenge hypotheses.</p></div>""",unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False, max_entries=2)
 def load_research_dataset():
@@ -164,7 +164,7 @@ m2.markdown(card("Contradictions",len(contradictions)),unsafe_allow_html=True)
 m3.markdown(card("Detected events",len(events)),unsafe_allow_html=True)
 m4.markdown(card("Hypotheses",len(hypotheses)),unsafe_allow_html=True)
 
-overview,structure,liquidity_tab,macro_tab,hypotheses_tab,evidence_tab,data_tab=st.tabs(["Overview","Structure","Liquidity & Events","Macro Context","Hypotheses","Evidence","Research Data"])
+overview,structure,liquidity_tab,macro_tab,analogue_tab,hypotheses_tab,evidence_tab,data_tab=st.tabs(["Overview","Structure","Liquidity & Events","Macro Context","Historical Analogues","Hypotheses","Evidence","Research Data"])
 
 with overview:
     left,right=st.columns([1.65,1])
@@ -207,7 +207,7 @@ with liquidity_tab:
                 st.markdown(f'<div class="event"><div class="event-name">{event.get("name","event").upper()}</div><div class="event-meta">{event.get("timeframe","")} · {event.get("kind","")}</div></div>',unsafe_allow_html=True)
         else: st.info("No SMC events were detected.")
 
-with hypotheses_tab:
+with analogue_tab:\n    st.markdown("### Historical analogue research")\n    st.caption("Analogue matching requires a labelled historical episode set; current dashboard displays available event-study evidence without ranking outcomes.")\n    reaction=(report.get("macro",{}) or {}).get("event_reaction_study",{})\n    st.json({"event_study_summary":reaction})\n\nwith hypotheses_tab:
     st.markdown("### Competing hypotheses")
     if hypotheses:
         for h in hypotheses:
