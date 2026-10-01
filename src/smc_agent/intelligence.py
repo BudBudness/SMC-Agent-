@@ -1,5 +1,4 @@
 from dataclasses import dataclass,asdict
-from typing import Optional
 
 @dataclass
 class Hypothesis:
@@ -7,7 +6,6 @@ class Hypothesis:
     evidence:list
     contradictions:list
     invalidation:list
-    confidence:Optional[float]=None
 
 @dataclass
 class IntelligenceReport:
