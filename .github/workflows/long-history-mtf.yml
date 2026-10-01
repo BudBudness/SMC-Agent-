@@ -18,6 +18,12 @@ on:
       - "src/smc_agent/analogue.py"
       - "src/smc_agent/macro_reaction.py"
       - "src/smc_agent/event_study.py"
+      - "scripts/build_research_report.py"
+      - "app/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "next.config.ts"
+      - "vercel.json"
   schedule:
     - cron: "30 2 * * 1"
 
@@ -113,6 +119,14 @@ jobs:
           print({"validation":"PASS","source_rows":artifact["source_rows"],"states":{tf:artifact["timeframes"][tf]["state"] for tf in expected}})
           PY
 
+      - name: Build canonical research report artifact
+        run: PYTHONPATH=src python scripts/build_research_report.py data/long_history/EURUSD_M1_intelligence_window.csv --out data/long_history/EURUSD_research_report.json
+
+      - name: Build production dashboard
+        run: |
+          npm install
+          npm run build
+
       - name: Build compact dashboard research dataset
         run: |
           PYTHONPATH=src python - <<'PY'
@@ -137,6 +151,7 @@ jobs:
           gh release upload research-data data/long_history/EURUSD_M1_normalized.csv.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/EURUSD_M1_dashboard.csv.gz --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/EURUSD_MTF_dashboard.json.gz --repo "${{ github.repository }}" --clobber
+          gh release upload research-data data/long_history/EURUSD_research_report.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
 
