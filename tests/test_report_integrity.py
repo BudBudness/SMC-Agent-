@@ -65,3 +65,5 @@ def test_event_study_excludes_incomplete_forward_horizons():
     assert summary["complete_samples"]["h1"] == 1
     assert summary["complete_samples"]["h3"] == 0
     assert summary["status"] == "DESCRIPTIVE_ONLY"
+
+# CI validation trigger: dashboard workflow import path is explicit.
