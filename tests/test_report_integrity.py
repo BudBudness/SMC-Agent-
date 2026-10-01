@@ -33,7 +33,25 @@ def test_pipeline_rejects_bad_ohlc():
     df.iloc[10,df.columns.get_loc("high")]=0.5
     with pytest.raises(ValueError):
         run(df)
-\n\ndef test_source_integrity_reports_duplicate_and_invalid_ohlc():\n    from smc_agent.data_integrity import validate_source\n    df = _df(20)\n    df = pd.concat([df, df.iloc[[0]]])\n    df.iloc[-1, df.columns.get_loc("high")] = 0.5\n    result = validate_source(df)\n    assert result["status"] == "FAIL"\n    assert result["duplicate_timestamps"] == 1\n    assert result["invalid_ohlc_rows"] == 1\n\n\ndef test_source_integrity_passes_clean_fixture():\n    from smc_agent.data_integrity import validate_source\n    result = validate_source(_df(20))\n    assert result["status"] == "PASS"\n    assert result["invalid_ohlc_rows"] == 0\n
+
+
+def test_source_integrity_reports_duplicate_and_invalid_ohlc():
+    from smc_agent.data_integrity import validate_source
+    df = _df(20)
+    df = pd.concat([df, df.iloc[[0]]])
+    df.iloc[-1, df.columns.get_loc("high")] = 0.5
+    result = validate_source(df)
+    assert result["status"] == "FAIL"
+    assert result["duplicate_timestamps"] == 1
+    assert result["invalid_ohlc_rows"] == 1
+
+
+def test_source_integrity_passes_clean_fixture():
+    from smc_agent.data_integrity import validate_source
+    result = validate_source(_df(20))
+    assert result["status"] == "PASS"
+    assert result["invalid_ohlc_rows"] == 0
+
 
 def test_event_study_excludes_incomplete_forward_horizons():
     from smc_agent.event_study import event_reactions, summarize
