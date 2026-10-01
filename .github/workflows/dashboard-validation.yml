@@ -2,6 +2,7 @@ name: Production dashboard validation
 on:
   push:
     paths:
+      - ".github/workflows/**"
       - "app/**"
       - "package.json"
       - "package-lock.json"
