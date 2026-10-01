@@ -5,25 +5,27 @@ import {useEffect,useState} from "react";
 const TFS=["12M","6M","3M","W","D","4H","1H","15M","5M","1M"];
 const tabs=["Overview","Structure","Liquidity & Events","Macro Context","Historical Analogues","Hypotheses","Evidence","Research Data"];
 
+function asArray<T=any>(v:any):T[]{return Array.isArray(v)?v:[];}
 function displayValue(v:any){
   if(v===null||v===undefined)return "UNKNOWN";
   if(typeof v==="object"){
-    if("phase" in v)return String(v.phase);
-    if("state" in v)return String(v.state);
-    return JSON.stringify(v);
+    if("phase" in v)return String(v.phase??"UNKNOWN");
+    if("state" in v)return String(v.state??"UNKNOWN");
+    try{return JSON.stringify(v)??"UNKNOWN"}catch{return "UNSERIALIZABLE"}
   }
   return String(v);
 }
-function Pill({v}:{v:string}){return <span className={"pill "+String(v||"NEUTRAL").toLowerCase()}>{v||"NEUTRAL"}</span>}
+function Pill({v}:{v:any}){const value=typeof v==="string"&&v?v:"NEUTRAL";return <span className={"pill "+value.toLowerCase()}>{value}</span>}
 function Panel({title,sub,children}:{title:string;sub?:string;children:React.ReactNode}){return <section className="panel"><div className="panel-head"><div><h2>{title}</h2>{sub&&<p>{sub}</p>}</div></div>{children}</section>}
 function KV({k,v}:{k:string;v:any}){return <div className="kv"><span>{k}</span><b title={typeof v==="object"?JSON.stringify(v):undefined}>{displayValue(v)}</b></div>}
 function Table({rows,empty="No records available."}:{rows:any[];empty?:string}){
-  if(!rows?.length)return <p className="muted">{empty}</p>;
-  const keys=Array.from(new Set(rows.flatMap(r=>Object.keys(r||{})))).slice(0,10);
-  return <div className="table-wrap"><table><thead><tr>{keys.map(k=><th key={k}>{k.replaceAll("_"," ")}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof r[k]==="object"?JSON.stringify(r[k]):String(r[k]??"")}</td>)}</tr>)}</tbody></table></div>;
+  const safeRows=asArray(rows);
+  if(!safeRows.length)return <p className="muted">{empty}</p>;
+  const keys=Array.from(new Set(safeRows.flatMap(r=>r&&typeof r==="object"?Object.keys(r):[]))).slice(0,10);
+  return <div className="table-wrap"><table><thead><tr>{keys.map(k=><th key={k}>{k.replaceAll("_"," ")}</th>)}</tr></thead><tbody>{safeRows.map((r,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof r[k]==="object"?JSON.stringify(r[k]):String(r[k]??"")}</td>)}</tr>)}</tbody></table></div>;
 }
 function StructureViz({frame}:{frame:any}){
-  const highs=frame?.confirmed_highs||[], lows=frame?.confirmed_lows||[];
+  const highs=asArray(frame?.confirmed_highs), lows=asArray(frame?.confirmed_lows);
   const points=[...highs.map((x:any)=>({type:"HIGH",value:Array.isArray(x)?x.at(-1):x.value??x.price??x})),...lows.map((x:any)=>({type:"LOW",value:Array.isArray(x)?x.at(-1):x.value??x.price??x}))].slice(-16);
   return <div className="structure-viz"><div className="axis"><span>CONFIRMED STRUCTURE</span><span>{points.length} points</span></div><div className="structure-line">{points.length?points.map((p:any,i:number)=><div key={i} className={"structure-point "+p.type.toLowerCase()} style={{left:(i/Math.max(points.length-1,1))*96+2+"%"}}><i/><small>{p.type}</small></div>):<span className="muted">No confirmed swing points in this frame.</span>}</div></div>;
 }
@@ -34,9 +36,9 @@ export default function Home(){
   useEffect(()=>{fetch("/api/research",{cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x}).then(setD).catch(x=>setE(x.message))},[]);
   if(e)return <AppError message={e}/>;
   if(!d)return <main className="shell"><div className="loading">Loading validated research workspace…</div></main>;
-  const r=d.report||{},s=r.market_state||{},frames=d.mtf?.timeframes||{}, contradictions=s.contradictions||[], evidence=r.evidence||[], events=r.events||[], macro=r.macro||{}, analogue=r.analogue_research||{};
+  const r=d.report&&typeof d.report==="object"?d.report:{},s=r.market_state&&typeof r.market_state==="object"?r.market_state:{},frames=d.mtf?.timeframes&&typeof d.mtf.timeframes==="object"?d.mtf.timeframes:{}, contradictions=asArray(s.contradictions), evidence=asArray(r.evidence), events=asArray(r.events), macro=r.macro&&typeof r.macro==="object"?r.macro:{}, analogue=r.analogue_research&&typeof r.analogue_research==="object"?r.analogue_research:{};
   const selected=frames[tf]||{};
-  const macroEvents=macro.events||[];
+  const macroEvents=asArray(macro.events);
   const eventStudy=macro.event_reaction_study||{};
   const source=d.source||r.dataset||{};
   const coverage=TFS.map(x=>({timeframe:x,bars:frames[x]?.bars,state:frames[x]?.state,start:frames[x]?.start,end:frames[x]?.end}));
@@ -74,7 +76,7 @@ export default function Home(){
         <Table rows={contradictions} empty="No cross-timeframe contradictions were recorded."/>
       </Panel>
       <Panel title="Recent sequenced events" sub="Chronological observations from the canonical report.">
-        <Table rows={events.slice(-8)}/>
+        <Table rows={asArray(events).slice(-8)}/>
       </Panel>
     </section>}
 
@@ -82,7 +84,7 @@ export default function Home(){
       <Panel title="Multi-timeframe structure" sub="Confirmed swings are shown only after right-side confirmation.">
         <div className="select-row">{TFS.map(x=><button className={tf===x?"selected":""} onClick={()=>setTf(x)} key={x}>{x}</button>)}</div>
         <div className="structure-card"><div className="state-row"><h3>{tf}</h3><Pill v={selected.state}/></div><StructureViz frame={selected}/><div className="three"><KV k="Bars" v={selected.bars?.toLocaleString?.()??selected.bars}/><KV k="Start" v={selected.start}/><KV k="End" v={selected.end}/></div></div>
-        <div className="grid2 compact"><Panel title="Confirmed highs"><Table rows={(selected.confirmed_highs||[]).map((x:any)=>typeof x==="object"?x:{value:x})} empty="No confirmed highs."/></Panel><Panel title="Confirmed lows"><Table rows={(selected.confirmed_lows||[]).map((x:any)=>typeof x==="object"?x:{value:x})} empty="No confirmed lows."/></Panel></div>
+        <div className="grid2 compact"><Panel title="Confirmed highs"><Table rows={asArray(selected.confirmed_highs).map((x:any)=>typeof x==="object"?x:{value:x})} empty="No confirmed highs."/></Panel><Panel title="Confirmed lows"><Table rows={asArray(selected.confirmed_lows).map((x:any)=>typeof x==="object"?x:{value:x})} empty="No confirmed lows."/></Panel></div>
       </Panel>
     </section>}
 
@@ -95,7 +97,7 @@ export default function Home(){
         <KV k="Sweep" v={r.liquidity?.sweep?.kind||r.liquidity?.sweep?.status||"NONE"}/><KV k="Inducement" v={r.liquidity?.inducement?.kind||r.liquidity?.inducement?.status||"NONE"}/>
         {r.liquidity?.sweep&&<pre>{JSON.stringify(r.liquidity.sweep,null,2)}</pre>}
       </Panel>
-      <Panel title="Sequenced SMC events" sub="Chronological event ordering preserves causal context."><div className="event-list">{events.map((x:any,i:number)=><div className="event" key={i}><div><b>{String(x.name).toUpperCase()}</b><span>{x.timeframe} · {x.kind} · {x.evidence?.confirmation_time?`confirmed ${x.evidence.confirmation_time}`:"provenance recorded"}</span></div><code>{String(x.time||"")}</code></div>)}</div></Panel>
+      <Panel title="Sequenced SMC events" sub="Chronological event ordering preserves causal context."><div className="event-list">{asArray(events).map((x:any,i:number)=><div className="event" key={i}><div><b>{String(x.name).toUpperCase()}</b><span>{x.timeframe} · {x.kind} · {x.evidence?.confirmation_time?`confirmed ${x.evidence.confirmation_time}`:"provenance recorded"}</span></div><code>{String(x.time||"")}</code></div>)}</div></Panel>
       <Panel title="Delivery context"><KV k="4H AMD" v={s["4H_AMD"]}/><KV k="Displacement" v={s.displacement}/><KV k="FVG count" v={s.fvg_count}/><KV k="Order blocks" v={s.order_block_count}/></Panel>
     </section>}
 
@@ -117,8 +119,8 @@ export default function Home(){
       <Panel title="Conditional statistics" sub="Only displayed when supplied by the research engine."><Table rows={Array.isArray(analogue.conditional_stats)?analogue.conditional_stats:Object.entries(analogue.conditional_stats||{}).map(([k,v])=>({metric:k,value:typeof v==="object"?JSON.stringify(v):v}))} empty="No conditional statistics supplied."/></Panel>
     </section>}
 
-    {tab==="Hypotheses"&&<section>{(r.hypotheses||[]).map((h:any,i:number)=><Panel title={h.name} sub="Competing research hypothesis — not a recommendation." key={i}>
-      <div className="grid3"><div><h3>Supporting evidence</h3><Table rows={(h.evidence||[]).map((x:any)=>({claim_id:x}))} empty="None recorded."/></div><div><h3>Contradictions</h3><Table rows={(h.contradictions||[]).map((x:any)=>({explanation:x}))} empty="None recorded."/></div><div><h3>Invalidation</h3><Table rows={(h.invalidation||[]).map((x:any)=>({condition:x}))} empty="None recorded."/></div></div>
+    {tab==="Hypotheses"&&<section>{asArray(r.hypotheses).map((h:any,i:number)=><Panel title={h.name} sub="Competing research hypothesis — not a recommendation." key={i}>
+      <div className="grid3"><div><h3>Supporting evidence</h3><Table rows={asArray(h.evidence).map((x:any)=>({claim_id:x}))} empty="None recorded."/></div><div><h3>Contradictions</h3><Table rows={asArray(h.contradictions).map((x:any)=>({explanation:x}))} empty="None recorded."/></div><div><h3>Invalidation</h3><Table rows={asArray(h.invalidation).map((x:any)=>({condition:x}))} empty="None recorded."/></div></div>
     </Panel>)}</section>}
 
     {tab==="Evidence"&&<section>
