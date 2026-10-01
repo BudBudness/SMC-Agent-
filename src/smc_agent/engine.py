@@ -16,6 +16,7 @@ from .macro_reaction import enrich
 from .event_study import event_reactions,summarize
 from .evidence import Evidence,EvidenceLedger
 from .analogue import research as analogue_research
+from .data_integrity import validate_source
 
 def _location(df):
     points=swings(df)
@@ -83,7 +84,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
            "contradictions":contradiction["contradictions"],"authority":"W",
            "displacement":latest_disp["strength"] if latest_disp else "NONE",
-           "fvg_count":len(fvgs),"order_block_count":len(obs)}
+           "fvg_count":len(fvgs),"order_block_count":len(obs),"source_integrity":source_integrity}
     pattern={"regime":states.get("12M"),"weekly_bias":weekly,"location":state["daily_location"],
              "sweep":bool(sweep_event),"displacement":latest_disp["strength"] if latest_disp else "NONE",
              "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),"amd":amd.get("phase")}
