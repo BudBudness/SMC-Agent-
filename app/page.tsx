@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useState} from "react";
 
 const TFS=["12M","6M","3M","W","D","4H","1H","15M","5M","1M"];
 const tabs=["Overview","Structure","Liquidity & Events","Macro Context","Historical Analogues","Hypotheses","Evidence","Research Data"];
@@ -39,7 +39,7 @@ export default function Home(){
   const macroEvents=macro.events||[];
   const eventStudy=macro.event_reaction_study||{};
   const source=d.source||r.dataset||{};
-  const coverage=useMemo(()=>TFS.map(x=>({timeframe:x,bars:frames[x]?.bars,state:frames[x]?.state,start:frames[x]?.start,end:frames[x]?.end})),[frames]);
+  const coverage=TFS.map(x=>({timeframe:x,bars:frames[x]?.bars,state:frames[x]?.state,start:frames[x]?.start,end:frames[x]?.end}));
 
   return <main className="shell">
     <header className="hero">
