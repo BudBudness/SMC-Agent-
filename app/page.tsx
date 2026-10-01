@@ -68,7 +68,7 @@ export default function Home(){
         <p className="muted">Weekly structure is authoritative. Lower-timeframe conflict is retained as contradiction and cannot silently override it.</p>
       </Panel>
       <Panel title="Integrity & lineage">
-        <KV k="Symbol" v={r.symbol}/><KV k="Report timestamp" v={r.timestamp}/><KV k="Analogue status" v={analogue.status}/><KV k="Look-ahead policy" v={d.mtf?.lookahead_control}/><KV k="Dataset source" v={source.source||"EUR/USD M1 research release"}/>
+        <KV k="Symbol" v={r.symbol}/><KV k="Report timestamp" v={r.timestamp}/><KV k="Analogue status" v={analogue.status}/><KV k="Look-ahead policy" v={d.mtf?.lookahead_control}/><KV k="Dataset source" v={source.source||"EUR/USD M1 research release"}/><KV k="Source integrity" v={s.source_integrity?.status||"UNKNOWN"}/><KV k="Source rows" v={s.source_integrity?.rows}/><KV k="Duplicate timestamps" v={s.source_integrity?.duplicate_timestamps}/>
       </Panel>
       <Panel title="Contradictions" sub="Conflicts are first-class research evidence.">
         <Table rows={contradictions} empty="No cross-timeframe contradictions were recorded."/>
@@ -95,7 +95,7 @@ export default function Home(){
         <KV k="Sweep" v={r.liquidity?.sweep?.kind||r.liquidity?.sweep?.status||"NONE"}/><KV k="Inducement" v={r.liquidity?.inducement?.kind||r.liquidity?.inducement?.status||"NONE"}/>
         {r.liquidity?.sweep&&<pre>{JSON.stringify(r.liquidity.sweep,null,2)}</pre>}
       </Panel>
-      <Panel title="Sequenced SMC events" sub="Chronological event ordering preserves causal context."><div className="event-list">{events.map((x:any,i:number)=><div className="event" key={i}><div><b>{String(x.name).toUpperCase()}</b><span>{x.timeframe} · {x.kind}</span></div><code>{String(x.time||"")}</code></div>)}</div></Panel>
+      <Panel title="Sequenced SMC events" sub="Chronological event ordering preserves causal context."><div className="event-list">{events.map((x:any,i:number)=><div className="event" key={i}><div><b>{String(x.name).toUpperCase()}</b><span>{x.timeframe} · {x.kind} · {x.evidence?.confirmation_time?`confirmed ${x.evidence.confirmation_time}`:"provenance recorded"}</span></div><code>{String(x.time||"")}</code></div>)}</div></Panel>
       <Panel title="Delivery context"><KV k="4H AMD" v={s["4H_AMD"]}/><KV k="Displacement" v={s.displacement}/><KV k="FVG count" v={s.fvg_count}/><KV k="Order blocks" v={s.order_block_count}/></Panel>
     </section>}
 
