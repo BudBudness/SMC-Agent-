@@ -34,3 +34,16 @@ def test_pipeline_rejects_bad_ohlc():
     with pytest.raises(ValueError):
         run(df)
 \n\ndef test_source_integrity_reports_duplicate_and_invalid_ohlc():\n    from smc_agent.data_integrity import validate_source\n    df = _df(20)\n    df = pd.concat([df, df.iloc[[0]]])\n    df.iloc[-1, df.columns.get_loc("high")] = 0.5\n    result = validate_source(df)\n    assert result["status"] == "FAIL"\n    assert result["duplicate_timestamps"] == 1\n    assert result["invalid_ohlc_rows"] == 1\n\n\ndef test_source_integrity_passes_clean_fixture():\n    from smc_agent.data_integrity import validate_source\n    result = validate_source(_df(20))\n    assert result["status"] == "PASS"\n    assert result["invalid_ohlc_rows"] == 0\n
+
+def test_event_study_excludes_incomplete_forward_horizons():
+    from smc_agent.event_study import event_reactions, summarize
+    df = _df(5)
+    events = [{"name": "test", "time": df.index[-2], "timeframe": "1M"}]
+    reactions = event_reactions(df, events, horizons=(1, 3))
+    assert len(reactions) == 1
+    assert pd.notna(reactions.iloc[0]["h1"])
+    assert pd.isna(reactions.iloc[0]["h3"])
+    summary = summarize(reactions)
+    assert summary["complete_samples"]["h1"] == 1
+    assert summary["complete_samples"]["h3"] == 0
+    assert summary["status"] == "DESCRIPTIVE_ONLY"
