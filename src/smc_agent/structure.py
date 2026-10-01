@@ -32,9 +32,9 @@ def choch_bos(df,direction):
     if direction=="LONG":
         ref=highs[-1]; continuation=close>ref[2]
         prior_down=highs[-1][2]<highs[-2][2]
-        return {"choch":bool(continuation and prior_down),"bos":bool(continuation and not prior_down),"reference":ref}
+        return {"choch":bool(continuation and prior_down),"bos":bool(continuation and not prior_down),"reference":ref,"confirmation_time":df.index[-1]}
     if direction=="SHORT":
         ref=lows[-1]; continuation=close<ref[2]
         prior_up=lows[-1][2]>lows[-2][2]
-        return {"choch":bool(continuation and prior_up),"bos":bool(continuation and not prior_up),"reference":ref}
+        return {"choch":bool(continuation and prior_up),"bos":bool(continuation and not prior_up),"reference":ref,"confirmation_time":df.index[-1]}
     return {"choch":False,"bos":False,"reference":None}
