@@ -49,6 +49,7 @@ def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df):
 
 def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=None):
     df=df.sort_index()
+    source_integrity=validate_source(df)
     if len(df)<100:
         return build_report(symbol,now,{"status":"INSUFFICIENT_DATA"},{"zones":[],"sweep":None,"inducement":None},[],{},
             [{"name":"insufficient_data","evidence":[],"contradictions":[],"invalidation":["provide a validated multi-timeframe history"]}],
@@ -80,7 +81,8 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     macro={"events":enrich(event_context(news_events))}
     ledger=_evidence(weekly,sweep_event,latest_disp,shift,contradiction["contradictions"],df)
     evidence=ledger.as_list()
-    macro["event_reaction_study"]=summarize(event_reactions(frames["15M"],events))
+    study_events=[e for e in events if e.get("timeframe")=="15M"]
+    macro["event_reaction_study"]=summarize(event_reactions(frames["15M"],study_events))
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
            "contradictions":contradiction["contradictions"],"authority":"W",
            "displacement":latest_disp["strength"] if latest_disp else "NONE",
