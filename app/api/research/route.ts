@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";
+const BASE="https://github.com/BudBudness/SMC-Agent-/releases/download/research-data";
+export async function GET(){try{const [rr,mr]=await Promise.all([fetch(BASE+"/EURUSD_research_report.json",{cache:"no-store"}),fetch(BASE+"/EURUSD_MTF_dashboard.json.gz",{cache:"no-store"})]);if(!rr.ok||!mr.ok)throw new Error("Validated research release is unavailable");const report=await rr.json();const zlib=await import("node:zlib");const mtf=JSON.parse(zlib.gunzipSync(Buffer.from(await mr.arrayBuffer())).toString("utf8"));return NextResponse.json({report,mtf,source:report.dataset||{}})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Research artifacts unavailable"},{status:503})}}
