@@ -37,11 +37,11 @@
 - [x] Responsive research UI
 - [x] Canonical report API
 - [x] Overview
-- [x] MTF structure
+- [x] MTF structure with confirmed-swing visualization
 - [x] Liquidity and event sequencing
-- [x] Macro context
-- [x] Historical analogue research
-- [x] Competing hypotheses
+- [x] Macro context and reaction-study surface
+- [x] Historical analogue research and conditional statistics surface
+- [x] Competing hypotheses with evidence/contradiction/invalidation views
 - [x] Canonical evidence ledger
 - [x] Dataset lineage and MTF coverage
 - [x] Explicit research-only boundary
@@ -50,7 +50,7 @@
 
 ## Gate 5 — Deployment
 - [ ] Vercel project authorization available to this workspace
-- [ ] Vercel production deployment verified
+- [ ] Vercel production deployment verified after latest dashboard commit
 - [ ] Live browser verification
 - [ ] Production runtime error verification
 
