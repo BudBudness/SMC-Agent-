@@ -13,12 +13,14 @@ on:
       - "scripts/evaluate_mtf_intelligence.py"
       - "scripts/build_dashboard_mtf.py"
       - "src/smc_agent/report_schema.py"
+      - "src/smc_agent/data_integrity.py"
       - "src/smc_agent/engine.py"
       - "src/smc_agent/evidence.py"
       - "src/smc_agent/analogue.py"
       - "src/smc_agent/macro_reaction.py"
       - "src/smc_agent/event_study.py"
       - "scripts/build_research_report.py"
+      - "scripts/run_labelled_benchmark.py"
       - "app/**"
       - "package.json"
       - "tsconfig.json"
@@ -44,7 +46,7 @@ jobs:
         run: python -m pip install -e ".[test]" histdata-fetcher
 
       - name: Fetch EURUSD M1 history
-        run: PYTHONPATH=src python scripts/fetch_long_history.py --start 2003-05-01 --end 2026-09-30 --out data/long_history/EURUSD_M1.csv
+        run: PYTHONPATH=src python scripts/fetch_long_history.py --start 2003-05-01 --end "$(date -u -d 'yesterday' +%F)" --out data/long_history/EURUSD_M1.csv
 
       - name: Validate long history
         run: PYTHONPATH=src python scripts/ingest_histdata.py data/long_history/EURUSD_M1.csv --out data/long_history/EURUSD_M1_normalized.csv
@@ -119,8 +121,11 @@ jobs:
           print({"validation":"PASS","source_rows":artifact["source_rows"],"states":{tf:artifact["timeframes"][tf]["state"] for tf in expected}})
           PY
 
+      - name: Build chronological analogue benchmark
+        run: PYTHONPATH=src python scripts/run_labelled_benchmark.py data/long_history/EURUSD_M1_normalized.csv --episodes 20 --out benchmark-results/labelled-eurusd.json
+
       - name: Build canonical research report artifact
-        run: PYTHONPATH=src python scripts/build_research_report.py data/long_history/EURUSD_M1_intelligence_window.csv --out data/long_history/EURUSD_research_report.json
+        run: PYTHONPATH=src python scripts/build_research_report.py data/long_history/EURUSD_M1_intelligence_window.csv --episodes benchmark-results/labelled-eurusd.json --out data/long_history/EURUSD_research_report.json
 
       - name: Build production dashboard
         run: |
@@ -154,6 +159,7 @@ jobs:
           gh release upload research-data data/long_history/EURUSD_research_report.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data data/long_history/mtf_coverage.json --repo "${{ github.repository }}" --clobber
           gh release upload research-data benchmark-results/mtf_substantive_evaluation.json --repo "${{ github.repository }}" --clobber
+          gh release upload research-data benchmark-results/labelled-eurusd.json --repo "${{ github.repository }}" --clobber
 
       - name: Upload long-history research artifacts
         uses: actions/upload-artifact@v4
@@ -162,4 +168,5 @@ jobs:
           path: |
             data/long_history/mtf_coverage.json
             benchmark-results/mtf_substantive_evaluation.json
+            benchmark-results/labelled-eurusd.json
             data/long_history/EURUSD_MTF_dashboard.json.gz
