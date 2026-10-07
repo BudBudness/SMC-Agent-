@@ -1,1 +1,14 @@
-{"framework":"nextjs","buildCommand":"npm run build","installCommand":"npm install","outputDirectory":".next"}
+{
+  "$schema":"https://openapi.vercel.sh/vercel.json",
+  "framework":"nextjs",
+  "buildCommand":"npm run build",
+  "installCommand":"npm install",
+  "outputDirectory":".next",
+  "functions":{
+    "api/research_engine.py":{
+      "memory":3009,
+      "maxDuration":300,
+      "excludeFiles":"{tests/**,__tests__/**,**/*.test.py,fixtures/**,__fixtures__/**,testdata/**,sample-data/**,static/**,assets/**}"
+    }
+  }
+}
