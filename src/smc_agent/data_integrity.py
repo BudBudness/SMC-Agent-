@@ -1,6 +1,9 @@
 """Source-data integrity checks for research artifacts.
 
 These checks describe dataset quality only; they do not infer market direction.
+Gap handling follows the source semantics: missing M1 bars can occur during
+normal FX trading pauses, so gaps are retained as provenance rather than
+treated as corruption.
 """
 
 import pandas as pd
@@ -40,12 +43,14 @@ def validate_source(df: pd.DataFrame, expected_minutes: int = 1) -> dict:
     expected = float(expected_minutes)
     gap_threshold = expected * 2
     large_gaps = gaps[gaps > gap_threshold]
+    gap_info = {
+        "large_gap_count": int(len(large_gaps)),
+        "max_gap_minutes": float(large_gaps.max()) if not large_gaps.empty else 0.0,
+        "threshold_minutes": gap_threshold,
+        "treatment": "informational; normal FX trading pauses and low-liquidity gaps are retained as provenance",
+    }
     if not large_gaps.empty:
-        warnings.append({
-            "large_gap_count": int(len(large_gaps)),
-            "max_gap_minutes": float(large_gaps.max()),
-            "threshold_minutes": gap_threshold,
-        })
+        warnings.append(gap_info)
 
     if len(idx):
         start = idx.min().isoformat()
@@ -54,13 +59,13 @@ def validate_source(df: pd.DataFrame, expected_minutes: int = 1) -> dict:
         start = end = None
 
     return {
-        "status": "FAIL" if errors else ("WARN" if warnings else "PASS"),
+        "status": "FAIL" if errors else "PASS",
         "rows": int(len(df)),
         "start": start,
         "end": end,
         "duplicate_timestamps": duplicate_count,
         "invalid_ohlc_rows": bad_ohlc_count,
-        "large_gaps": warnings,
+        "large_gaps": gap_info,
         "errors": errors,
         "warnings": warnings,
         "expected_source_cadence_minutes": expected_minutes,
