@@ -21,9 +21,31 @@ export default function Home(){
  if(!d)return <main className="terminal loading">Loading validated research system…</main>;
  const r=d.report||{},s=r.market_state||{},frames=d.mtf?.timeframes||{},source=d.source||r.dataset||{},events=arr(r.events),contradictions=arr(s.contradictions),analogue=r.analogue_research||{},selected=frames[tf]||{};
  const filtered=events.filter(x=>!query||JSON.stringify(x).toLowerCase().includes(query.toLowerCase()));
- const execute=async()=>{setRun({status:"RUNNING"});try{const z=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"run",instrument:r.symbol||"EURUSD"})});const x=await z.json();if(!z.ok)throw Error(x.error);setRun(x);setRuns(v=>[x.run,...v]);setView("Active Research")}catch(e){setRun({status:"FAILED",error:e instanceof Error?e.message:"Run failed"})}};
- const addHyp=async()=>{const title=prompt("Hypothesis title");if(!title)return;const z=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"hypothesis",data:{title,statement:title,status:"OPEN"}}));if(z.ok){const x=await z.json();setHyp(v=>[x,...v])}};
- const addEvidence=async()=>{const claim=prompt("Evidence claim");if(!claim)return;const z=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"evidence",data:{claim,evidence_type:"UNCLASSIFIED",provenance:{source:"researcher"}}})});if(z.ok){const x=await z.json();setEvidence(v=>[x,...v])}};
+ const execute=async()=>{ 
+  setRun({status:"RUNNING"});
+  try{
+    const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"run",instrument:r.symbol||"EURUSD"})});
+    const result=await response.json();
+    if(!response.ok) throw Error(result.error||"Research run failed");
+    setRun(result);
+    setRuns(v=>[result.run,...v]);
+    setView("Active Research");
+  }catch(e){
+    setRun({status:"FAILED",error:e instanceof Error?e.message:"Run failed"});
+  }
+ };
+ const addHyp=async()=>{
+  const title=prompt("Hypothesis title");
+  if(!title)return;
+  const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"hypothesis",data:{title:title,statement:title,status:"OPEN"}})});
+  if(response.ok){const item=await response.json();setHyp(v=>[item,...v]);}
+ };
+ const addEvidence=async()=>{
+  const claim=prompt("Evidence claim");
+  if(!claim)return;
+  const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"evidence",data:{claim:claim,evidence_type:"UNCLASSIFIED",provenance:{source:"researcher"}}})});
+  if(response.ok){const item=await response.json();setEvidence(v=>[item,...v]);}
+ };
  const active=run?.result;
  const workspace=<><div className="hero"><div><span className="eyebrow">ACTIVE RESEARCH · {r.symbol||"EURUSD"}</span><h1>Market Workspace</h1><p>Research execution, MTF structure, evidence and historical reconstruction. No trading execution.</p></div><button className="primary" onClick={execute}>RUN ANALYSIS</button></div><div className="tf-strip">{TFS.map(x=><button key={x} className={tf===x?"sel":""} onClick={()=>setTf(x)}><small>{x}</small><b>{txt(frames[x]?.state)}</b></button>)}</div><div className="authority"><b>WEEKLY AUTHORITY · {txt(s.weekly_bias)}</b><span>Weekly structure remains authoritative; lower timeframes are retained as evidence.</span><em>RESEARCH ONLY</em></div><div className="columns"><div><Panel title={"Structure · "+tf} sub="Canonical validated MTF state."><div className="chart"><b>{txt(selected.state)}</b><span>{selected.bars||0} bars · {selected.start||""} → {selected.end||""}</span></div><Table rows={[...arr(selected.confirmed_highs).map(x=>({type:"HIGH",value:x?.price??x?.value??x})),...arr(selected.confirmed_lows).map(x=>({type:"LOW",value:x?.price??x?.value??x}))].slice(-20)}/></Panel><Panel title="Chronological events" sub="Canonical research events from the validated report."><input className="search-wide" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Filter events…"/><Table rows={filtered}/></Panel></div><aside><Panel title="Research state"><KV k="4H AMD" v={s["4H_AMD"]}/><KV k="Daily location" v={s.daily_location}/><KV k="Displacement" v={s.displacement}/><KV k="Contradictions" v={contradictions.length}/></Panel><Panel title="Data quality"><KV k="Source" v={source.source}/><KV k="Rows" v={source.rows}/><KV k="Integrity" v={s.source_integrity?.status}/></Panel></aside></div></>;
 
