@@ -4,11 +4,13 @@ on:
     paths:
       - ".github/workflows/**"
       - "app/**"
+      - "api/**"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.json"
       - "next.config.ts"
       - "vercel.json"
+      - "requirements.txt"
       - "src/**"
       - "scripts/build_research_report.py"
       - "tests/**"
@@ -50,12 +52,25 @@ jobs:
           assert x.get("report") and x.get("mtf"), x
           print("GET /api/research PASS")
           PY2
-          curl -sS -X POST https://smc-agent.vercel.app/api/research -H "Content-Type: application/json" -d '{"action":"run","instrument":"EURUSD"}' -o /tmp/research-run.json
+          curl -sS https://smc-agent.vercel.app/api/research_engine -o /tmp/engine-ready.json
+          python - <<'PY2'
+          import json
+          x=json.load(open("/tmp/engine-ready.json"))
+          assert x.get("status")=="READY", x
+          assert x.get("execution")=="CANONICAL_PIPELINE", x
+          print("GET /api/research_engine PASS")
+          PY2
+          curl -sS -X POST https://smc-agent.vercel.app/api/research             -H "Content-Type: application/json"             -d '{"action":"run","instrument":"EURUSD","parameters":{"start":"2026-09-01T00:00:00Z","end":"2026-10-02T16:58:00Z","replay_bars":1000}}'             -o /tmp/research-run.json
           python - <<'PY2'
           import json
           x=json.load(open("/tmp/research-run.json"))
+          r=x.get("result",{})
           assert x.get("run",{}).get("status")=="COMPLETED", x
-          assert len(x.get("result",{}).get("replay",[]))>0, x
-          assert x.get("result",{}).get("benchmarks"), x
-          print("POST /api/research run PASS", x["run"]["id"])
+          assert r.get("execution")=="CANONICAL_PIPELINE", r
+          assert r.get("parameters",{}).get("start")=="2026-09-01T00:00:00Z", r
+          assert r.get("dataset_validation",{}).get("valid") is True, r
+          assert r.get("mtf_validation",{}).get("valid") is True, r
+          assert len(r.get("replay",[]))>0, r
+          assert r.get("benchmarks",{}).get("results"), r
+          print("POST /api/research parameterized canonical pipeline PASS", x["run"]["id"])
           PY2
