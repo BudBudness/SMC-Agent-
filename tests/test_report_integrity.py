@@ -34,7 +34,6 @@ def test_pipeline_rejects_bad_ohlc():
     with pytest.raises(ValueError):
         run(df)
 
-
 def test_source_integrity_reports_duplicate_and_invalid_ohlc():
     from smc_agent.data_integrity import validate_source
     df = _df(20)
@@ -45,13 +44,19 @@ def test_source_integrity_reports_duplicate_and_invalid_ohlc():
     assert result["duplicate_timestamps"] == 1
     assert result["invalid_ohlc_rows"] == 1
 
-
 def test_source_integrity_passes_clean_fixture():
     from smc_agent.data_integrity import validate_source
     result = validate_source(_df(20))
     assert result["status"] == "PASS"
     assert result["invalid_ohlc_rows"] == 0
 
+def test_source_integrity_gaps_are_provenance_not_corruption():
+    from smc_agent.data_integrity import validate_source
+    df=_df(20).drop(_df(20).index[[5,6,7]])
+    result=validate_source(df)
+    assert result["status"]=="PASS"
+    assert result["large_gaps"]["large_gap_count"]==1
+    assert result["warnings"]
 
 def test_event_study_excludes_incomplete_forward_horizons():
     from smc_agent.event_study import event_reactions, summarize
