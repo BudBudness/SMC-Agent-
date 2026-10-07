@@ -4,7 +4,7 @@ const BASE="https://github.com/BudBudness/SMC-Agent-/releases/download/research-
 const SUPA="https://prqbeocaycxqsremxvmb.supabase.co";
 const KEY="sb_publishable_PVS7tsfzFOSwbRxfsv6plg_eK0nAynL";
 const H={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
-async function db(path:string,init:RequestInit={}){const r=await fetch(SUPA+"/rest/v1/"+path,{...init,headers:{...H,...(init.headers||{})},cache:"no-store"});const b=await r.text();if(!r.ok)throw Error("database "+r.status+": "+b);return b?JSON.parse(b):null}
+async function db(path:string,init:RequestInit={}){const r=await fetch(SUPA+"/rest/v1/"+path,{...init,headers:{...H,...((init.headers||{}) as Record<string,string>)},cache:"no-store"});const b=await r.text();if(!r.ok)throw Error("database "+r.status+": "+b);return b?JSON.parse(b):null}
 async function rel(name:string){const r=await fetch(BASE+"/"+name,{cache:"no-store"});if(!r.ok)throw Error("release unavailable: "+name);return r}
 async function canonical(){const [a,b]=await Promise.all([rel("EURUSD_research_report.json"),rel("EURUSD_MTF_dashboard.json.gz")]);return {report:await a.json(),mtf:JSON.parse(gunzipSync(Buffer.from(await b.arrayBuffer())).toString("utf8"))}}
 function csv(buf:ArrayBuffer){const s=gunzipSync(Buffer.from(buf)).toString("utf8").trim();const lines=s.split(/\r?\n/);const h=lines.shift()!.split(",");return lines.map(x=>{const a=x.split(",");const o:any={};h.forEach((k,i)=>o[k]=a[i]);return o}).filter(x=>x.timestamp)}
