@@ -30,6 +30,30 @@ export default function Home(){
  const coverage=TFS.map(x=>({timeframe:x,bars:frames[x]?.bars,state:frames[x]?.state,start:frames[x]?.start,end:frames[x]?.end}));
  const openActiveResearch=()=>{setView("Active Research");setQuery("")};
  const filteredEvents=events.filter((x:any)=>!query||JSON.stringify(x).toLowerCase().includes(query.toLowerCase()));
+ const eventCounts=events.reduce((acc:any,x:any)=>{const key=String(x.name||x.type||"unknown").toLowerCase();acc[key]=(acc[key]||0)+1;return acc},{} as Record<string,number>);
+ const benchmarkRows=[
+  {benchmark:"Data completeness",definition:"Published source rows and integrity state",result:String(source.rows??"UNKNOWN"),status:String(s.source_integrity?.status||"UNKNOWN")},
+  {benchmark:"Weekly authority",definition:"Canonical weekly state used as higher-timeframe authority",result:displayValue(s.weekly_bias),status:"DESCRIPTIVE"},
+  {benchmark:"Timeframe contradictions",definition:"Explicit conflicts retained across canonical hierarchy",result:String(contradictions.length),status:"OBSERVED"},
+  {benchmark:"Sequenced events",definition:"Chronological research events in the published report",result:String(events.length),status:"OBSERVED"},
+  {benchmark:"Displacement observations",definition:"Recorded displacement events",result:String(eventCounts.displacement||0),status:"OBSERVED"},
+  {benchmark:"Liquidity observations",definition:"Recorded liquidity formation/sweep events",result:String(events.filter((x:any)=>String(x.name||"").toLowerCase().includes("liquidity")||String(x.name||"").toLowerCase().includes("sweep")).length),status:"OBSERVED"},
+  {benchmark:"FVG observations",definition:"Recorded FVG observations",result:String(eventCounts.fvg||0),status:"OBSERVED"},
+  {benchmark:"Order-block observations",definition:"Recorded order-block observations",result:String(eventCounts.order_block||eventCounts.orderblock||0),status:"OBSERVED"}
+ ];
+ const reportSections=[
+  {section:"Research frame",value:`${r.symbol||"EURUSD"} · ${r.timestamp||"UNKNOWN"}`},
+  {section:"Dataset",value:source.source||"EUR/USD M1"},
+  {section:"Source integrity",value:s.source_integrity?.status||"UNKNOWN"},
+  {section:"Weekly Authority",value:displayValue(s.weekly_bias)},
+  {section:"Daily target/location",value:displayValue(s.daily_location)},
+  {section:"4H AMD",value:displayValue(s["4H_AMD"])},
+  {section:"Displacement",value:displayValue(s.displacement)},
+  {section:"Contradictions",value:String(contradictions.length)},
+  {section:"Events",value:String(events.length)},
+  {section:"Evidence claims",value:String(evidence.length)},
+  {section:"Analogue status",value:displayValue(analogue.status)}
+ ];
  const newResearch=<><ViewHead title="New Research" sub="Define a research frame, then open the validated canonical release. Execution remains research-only."/><Panel title="Research setup"><div className="setup-grid"><label>Instrument<select defaultValue="EURUSD"><option>EURUSD</option><option>BTCUSDT</option><option>ETHUSDT</option></select></label><label>Analysis timeframe<select defaultValue="MTF"><option>MTF</option><option>12M → 1M</option></select></label><label>Dataset<select defaultValue="Canonical validated release"><option>Canonical validated release</option></select></label></div><div className="setup-note">The current production release is a validated research artifact. A new engine execution must be triggered by the research pipeline; the UI will not simulate one.</div><button className="primary" onClick={openActiveResearch}>OPEN VALIDATED RESEARCH</button></Panel></>;
  const researchHistory=<><ViewHead title="Research History" sub="Versioned research releases and their provenance."/><Panel title="Current canonical release"><KV k="Symbol" v={r.symbol}/><KV k="Report timestamp" v={r.timestamp}/><KV k="Dataset" v={source.source||"EUR/USD M1"}/><KV k="Analogue status" v={analogue.status}/><KV k="Source integrity" v={s.source_integrity?.status||"UNKNOWN"}/><p className="muted">Historical releases are retained by the research pipeline. This interface displays the currently published canonical release.</p></Panel></>;
 
