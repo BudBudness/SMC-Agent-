@@ -35,39 +35,76 @@ def engine_labels(report):
     return list(dict.fromkeys(e.get("name") for e in report.as_dict().get("events",[]) if e.get("name") in EVENTS))
 
 def episode_record(df,i):
-    ref=reference_labels(df); report=analyze(df,symbol="EURUSD",now=df.index[-1]); obs=engine_labels(report)
-    return {"episode":i,"start":df.index[0].isoformat(),"end":df.index[-1].isoformat(),
-            "reference_events":ref,"observed_events":obs,"detection":score_detection(ref,obs),
-            "sequence":score_sequence(ref,obs),"weekly_bias":report.market_state.get("weekly_bias"),
-            "displacement":report.market_state.get("displacement"),
-            "outcome_20m":float(df.close.iloc[-1]/df.close.iloc[-21]-1) if len(df)>=21 else None}
+    ref=reference_labels(df)
+    report=analyze(df,symbol="EURUSD",now=df.index[-1])
+    obs=engine_labels(report)
+    state=report.market_state
+    return {
+        "episode":i,
+        "start":df.index[0].isoformat(),
+        "end":df.index[-1].isoformat(),
+        "reference_events":ref,
+        "observed_events":obs,
+        "detection":score_detection(ref,obs),
+        "sequence":score_sequence(ref,obs),
+        "weekly_bias":state.get("weekly_bias"),
+        "regime":state.get("timeframes",{}).get("12M"),
+        "daily_location":state.get("daily_location"),
+        "amd":state.get("4H_AMD",{}).get("phase"),
+        "displacement":state.get("displacement"),
+        "outcome_20m":float(df.close.iloc[-1]/df.close.iloc[-21]-1) if len(df)>=21 else None,
+    }
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument("csv"); p.add_argument("--episodes",type=int,default=20)
-    p.add_argument("--out",default="benchmark-results/labelled-eurusd.json"); a=p.parse_args()
-    df=HistDataProvider(a.csv).candles(); v=validate_ohlc(df)
+    p=argparse.ArgumentParser()
+    p.add_argument("csv")
+    p.add_argument("--episodes",type=int,default=20)
+    p.add_argument("--out",default="benchmark-results/labelled-eurusd.json")
+    a=p.parse_args()
+    df=HistDataProvider(a.csv).candles()
+    v=validate_ohlc(df)
     if not v["valid"]: raise SystemExit(json.dumps(v))
-    n=max(1,len(df)//a.episodes); rows=[]
+    n=max(1,len(df)//a.episodes)
+    rows=[]
     for i in range(a.episodes):
-        s=i*n; e=(i+1)*n if i<a.episodes-1 else len(df); ep=df.iloc[s:e]
+        s=i*n; e=(i+1)*n if i<a.episodes-1 else len(df)
+        ep=df.iloc[s:e]
         if len(ep)>=100: rows.append(episode_record(ep,i+1))
     history=[]; analogue=[]
     for x in rows:
-        pattern={"weekly_bias":x["weekly_bias"],"displacement":x["displacement"],
-                 "sweep":"sweep" in x["reference_events"],"choch":"choch" in x["reference_events"],
-                 "bos":"bos" in x["reference_events"]}
+        pattern={
+            "regime":x["regime"],
+            "weekly_bias":x["weekly_bias"],
+            "location":x["daily_location"],
+            "sweep":"sweep" in x["reference_events"],
+            "displacement":x["displacement"],
+            "choch":"choch" in x["reference_events"],
+            "bos":"bos" in x["reference_events"],
+            "amd":x["amd"],
+        }
         matches=find_analogues(history,pattern,limit=5,min_similarity=.35)
-        analogue.append({"episode":x["episode"],"matches":len(matches),
-                         "conditional_stats":conditional_stats(matches,"outcome_20m") if matches else {"samples":0}})
-        history.append({**pattern,"outcome_20m":x["outcome_20m"]})
+        analogue.append({
+            "episode":x["episode"],
+            "matches":len(matches),
+            "conditional_stats":conditional_stats(matches,"outcome") if matches else {"samples":0},
+        })
+        history.append({**pattern,"outcome":x["outcome_20m"]})
     seq=[x["sequence"]["order_accuracy"] for x in rows if x["sequence"]["order_pairs"]]
-    result={"symbol":"EURUSD","method":"independent_rule_based_reference_labels",
-            "label_status":"benchmark_labels_not_human_ground_truth","episodes":len(rows),
-            "dataset_validation":v,"start":df.index[0].isoformat(),"end":df.index[-1].isoformat(),
-            "detection":aggregate_detection([x["detection"] for x in rows]),
-            "sequence":{"episodes_with_order_pairs":len(seq),"mean_order_accuracy":float(np.mean(seq)) if seq else 0.0},
-            "analogue":{"episodes":analogue},"episode_results":rows}
+    result={
+        "symbol":"EURUSD",
+        "method":"independent_rule_based_reference_labels",
+        "label_status":"benchmark_labels_not_human_ground_truth",
+        "episodes":len(rows),
+        "dataset_validation":v,
+        "start":df.index[0].isoformat(),
+        "end":df.index[-1].isoformat(),
+        "detection":aggregate_detection([x["detection"] for x in rows]),
+        "sequence":{"episodes_with_order_pairs":len(seq),"mean_order_accuracy":float(np.mean(seq)) if seq else 0.0},
+        "analogue":{"episodes":analogue},
+        "episode_results":rows,
+    }
     os.makedirs(os.path.dirname(a.out) or ".",exist_ok=True)
     with open(a.out,"w",encoding="utf-8") as f: json.dump(result,f,indent=2)
     print(json.dumps(result,indent=2))
+
 if __name__=="__main__": main()
