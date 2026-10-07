@@ -35,3 +35,27 @@ jobs:
         run: npm install
       - name: Production Next.js build
         run: npm run build
+      - name: End-to-end production research API
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/research.json -w "%{http_code}" https://smc-agent.vercel.app/api/research || true)
+            if [ "$code" = "200" ]; then break; fi
+            sleep 10
+          done
+          test "$code" = "200"
+          python - <<'PY2'
+          import json
+          x=json.load(open("/tmp/research.json"))
+          assert x.get("report") and x.get("mtf"), x
+          print("GET /api/research PASS")
+          PY2
+          curl -sS -X POST https://smc-agent.vercel.app/api/research -H "Content-Type: application/json" -d '{"action":"run","instrument":"EURUSD"}' -o /tmp/research-run.json
+          python - <<'PY2'
+          import json
+          x=json.load(open("/tmp/research-run.json"))
+          assert x.get("run",{}).get("status")=="COMPLETED", x
+          assert len(x.get("result",{}).get("replay",[]))>0, x
+          assert x.get("result",{}).get("benchmarks"), x
+          print("POST /api/research run PASS", x["run"]["id"])
+          PY2
