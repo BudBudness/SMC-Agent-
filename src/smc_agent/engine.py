@@ -17,6 +17,7 @@ from .event_study import event_reactions,summarize
 from .evidence import Evidence,EvidenceLedger
 from .analogue import research as analogue_research
 from .data_integrity import validate_source
+from .agents.orchestrator import run_research_orchestration
 
 def _location(df):
     points=swings(df)
@@ -118,6 +119,8 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
              "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),"amd":amd.get("phase")}
     ar=analogue_research(historical_episodes,pattern)
     contradictions=contradiction["contradictions"]
+    orchestration=run_research_orchestration(states, methodology, evidence, contradictions)
+    state["orchestration"]=orchestration
     hypotheses=[
         {"name":"continuation","evidence":[e["claim_id"] for e in evidence],"contradictions":[c["explanation"] for c in contradictions],
          "invalidation":["Weekly structure changes","key liquidity is invalidated"]},
