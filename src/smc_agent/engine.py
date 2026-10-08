@@ -27,7 +27,7 @@ def _location(df):
     close=float(df.close.iloc[-1]); mid=(hi+lo)/2
     return "DISCOUNT" if close<mid else "PREMIUM" if close>mid else "EQUILIBRIUM"
 
-def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df):
+def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df,mtf_alignment=None):
     ledger=EvidenceLedger()
     if weekly!="NEUTRAL":
         ledger.add(Evidence("weekly_structure",weekly,"confirmed swing sequence","W",df.index[-1],
@@ -42,7 +42,7 @@ def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df):
         ledger.add(Evidence("structure_break",f"CHoCH={shift.get('choch')} BOS={shift.get('bos')}",
                             "close-confirmed swing break","15M",df.index[-1],
                             "confirmed swing reference and close beyond level",strength="MODERATE"))
-    if mtf_alignment.get("status") != "NOT_ESTABLISHED":
+    if mtf_alignment and mtf_alignment.get("status") != "NOT_ESTABLISHED":
         ledger.add(Evidence("htf_ltf_alignment",mtf_alignment["status"],"HTF zone arrival and LTF structure relationship","W→15M",mtf_alignment.get("confirmation_time") or mtf_alignment.get("arrival_time") or df.index[-1],"HTF authority, zone arrival, CHoCH/BOS and HTF liquidity target evaluated chronologically",strength="HIGH" if mtf_alignment["status"]=="ALIGNED" else "MODERATE"))
     if contradictions:
         ledger.add(Evidence("cross_timeframe_conflict",str(len(contradictions)),"cross-timeframe state comparison",
@@ -61,7 +61,11 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     contradiction=compare(states)
     weekly=states.get("W","NEUTRAL")
     ws=swings(frames["W"]); ins=swings(frames["15M"])
+    h1s=swings(frames["1H"]); ds=swings(frames["D"])
+    h1_zones=map_liquidity(h1s,scope="1H")
+    daily_zones=map_liquidity(ds,scope="D")
     zones=map_liquidity(ws,scope="external")+map_liquidity(ins[-40:],scope="internal")
+    h1_sweep=sweep(frames["1H"],h1_zones)
     sweep_event=sweep(frames["15M"],zones)
     inducement=detect_inducement(zones,sweep_event,{"weekly_bias":weekly})
     shift=choch_bos(frames["15M"],weekly)
@@ -83,14 +87,32 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     if obs: events.append({"name":"order_block","time":obs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":obs[-1]})
     events=sequence(events)["events"]
     macro={"events":enrich(event_context(news_events))}
-    ledger=_evidence(weekly,sweep_event,latest_disp,shift,contradiction["contradictions"],df)
+    ledger=_evidence(weekly,sweep_event,latest_disp,shift,contradiction["contradictions"],df,mtf_alignment)
     evidence=ledger.as_list()
     study_events=[e for e in events if e.get("timeframe")=="15M"]
     macro["event_reaction_study"]=summarize(event_reactions(frames["15M"],study_events))
+    macro_thesis=states.get("6M") if states.get("6M") in {"LONG","SHORT"} and states.get("6M")==states.get("3M") else "NEUTRAL"
+    daily_candidates=[z for z in daily_zones if z["kind"]==("SSL" if weekly=="SHORT" else "BSL")] if weekly in {"LONG","SHORT"} else daily_zones
+    daily_target=min(daily_candidates,key=lambda z:abs(float(z["price"])-float(frames["D"].close.iloc[-1]))) if daily_candidates else None
+    methodology={
+        "principle":"MACRO = WHERE and WHY; MICRO = WHEN and HOW.",
+        "authority":"Weekly structure is authoritative and lower timeframes cannot override it.",
+        "macro":{"12M":states.get("12M","NEUTRAL"),"6M":states.get("6M","NEUTRAL"),"3M":states.get("3M","NEUTRAL"),"thesis":macro_thesis},
+        "weekly":{"direction":weekly,"contradicts_macro":bool(macro_thesis!="NEUTRAL" and weekly!=macro_thesis)},
+        "daily":{"target_candidate":daily_target,"location":_location(frames["D"])},
+        "4H":{"amd":amd,"structure":states.get("4H","NEUTRAL")},
+        "1H":{"structure":states.get("1H","NEUTRAL"),"liquidity_zones":h1_zones[-40:],"sweep":h1_sweep},
+        "15M":{"structure":states.get("15M","NEUTRAL"),"confirmation":mtf_alignment},
+        "5M":{"structure":states.get("5M","NEUTRAL")},
+        "1M":{"structure":states.get("1M","NEUTRAL")},
+        "sequence":"HTF framework → HTF zone → LTF arrival → CHoCH → BOS → HTF liquidity target.",
+        "decision_boundary":"Research classification only; no execution, position sizing, stop/target recommendation, or trading prediction."
+    }
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
-           "contradictions":contradiction["contradictions"],"authority":"W",
+           "daily_target":daily_target,"contradictions":contradiction["contradictions"],"authority":"W",
            "displacement":latest_disp["strength"] if latest_disp else "NONE",
-           "fvg_count":len(fvgs),"order_block_count":len(obs),"source_integrity":source_integrity,"mtf_alignment":mtf_alignment}
+           "fvg_count":len(fvgs),"order_block_count":len(obs),"source_integrity":source_integrity,
+           "mtf_alignment":mtf_alignment,"methodology":methodology}
     pattern={"regime":states.get("12M"),"weekly_bias":weekly,"location":state["daily_location"],
              "sweep":bool(sweep_event),"displacement":latest_disp["strength"] if latest_disp else "NONE",
              "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),"amd":amd.get("phase")}
