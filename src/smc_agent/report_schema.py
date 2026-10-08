@@ -49,6 +49,15 @@ def validate_report(report):
             for k in ("claim_id","observation","source","provenance"): 
                 if not e.get(k): errors.append(f"evidence[{i}] missing {k}")
             if e.get("strength") not in STRENGTH: errors.append(f"evidence[{i}] invalid strength")
+    if "orchestration" in ms:
+        orch=ms["orchestration"]
+        if not isinstance(orch,dict): errors.append("market_state.orchestration must be an object")
+        else:
+            if orch.get("authority") != "W": errors.append("orchestration authority must be W")
+            if orch.get("decision_boundary") != "RESEARCH_ONLY": errors.append("orchestration decision boundary must be RESEARCH_ONLY")
+            ceo=orch.get("ceo")
+            if not isinstance(ceo,dict): errors.append("orchestration.ceo must be an object")
+            elif ceo.get("execution_allowed") is not False: errors.append("orchestration.ceo.execution_allowed must be false")
     ar=report["analogue_research"]
     if not isinstance(ar,dict): errors.append("analogue_research must be an object")
     else:
