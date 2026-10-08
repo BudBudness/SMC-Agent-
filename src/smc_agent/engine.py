@@ -1,6 +1,6 @@
 """Market intelligence orchestration. Research-only; no execution semantics."""
 import pandas as pd
-from .structure import structure_state,swings,choch_bos
+from .structure import structure_state,swings,choch_bos,mtf_structure_alignment
 from .liquidity import map_liquidity,sweep
 from .amd import classify_amd
 from .fvg import find_fvg
@@ -42,6 +42,8 @@ def _evidence(weekly,sweep_event,latest_disp,shift,contradictions,df):
         ledger.add(Evidence("structure_break",f"CHoCH={shift.get('choch')} BOS={shift.get('bos')}",
                             "close-confirmed swing break","15M",df.index[-1],
                             "confirmed swing reference and close beyond level",strength="MODERATE"))
+    if mtf_alignment.get("status") != "NOT_ESTABLISHED":
+        ledger.add(Evidence("htf_ltf_alignment",mtf_alignment["status"],"HTF zone arrival and LTF structure relationship","W→15M",mtf_alignment.get("confirmation_time") or mtf_alignment.get("arrival_time") or df.index[-1],"HTF authority, zone arrival, CHoCH/BOS and HTF liquidity target evaluated chronologically",strength="HIGH" if mtf_alignment["status"]=="ALIGNED" else "MODERATE"))
     if contradictions:
         ledger.add(Evidence("cross_timeframe_conflict",str(len(contradictions)),"cross-timeframe state comparison",
                             "MTF",df.index[-1],"hierarchical timeframe comparison",contradicts=["continuation"],strength="HIGH"))
@@ -63,6 +65,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     sweep_event=sweep(frames["15M"],zones)
     inducement=detect_inducement(zones,sweep_event,{"weekly_bias":weekly})
     shift=choch_bos(frames["15M"],weekly)
+    mtf_alignment=mtf_structure_alignment(frames["W"],frames["15M"],weekly)
     displacements=detect_displacement(frames["15M"])
     latest_disp=displacements[-1] if displacements else None
     fvgs=find_fvg(frames["15M"])
@@ -75,6 +78,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     if latest_disp: events.append({"name":"displacement","time":latest_disp["time"],"timeframe":"15M","kind":"observation","evidence":latest_disp})
     if shift.get("choch"): events.append({"name":"choch","time":df.index[-1],"timeframe":"15M","kind":"observation","evidence":shift})
     if shift.get("bos"): events.append({"name":"bos","time":df.index[-1],"timeframe":"15M","kind":"observation","evidence":shift})
+    if mtf_alignment.get("status") != "NOT_ESTABLISHED": events.append({"name":"htf_ltf_alignment","time":mtf_alignment.get("confirmation_time") or mtf_alignment.get("arrival_time"),"timeframe":"W→15M","kind":"observation","evidence":mtf_alignment})
     if fvgs: events.append({"name":"fvg","time":fvgs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":fvgs[-1]})
     if obs: events.append({"name":"order_block","time":obs[-1]["formed_at"],"timeframe":"15M","kind":"observation","evidence":obs[-1]})
     events=sequence(events)["events"]
@@ -86,7 +90,7 @@ def analyze(df,symbol="EURUSD",news_events=None,now=None,historical_episodes=Non
     state={"weekly_bias":weekly,"timeframes":states,"4H_AMD":amd,"daily_location":_location(frames["D"]),
            "contradictions":contradiction["contradictions"],"authority":"W",
            "displacement":latest_disp["strength"] if latest_disp else "NONE",
-           "fvg_count":len(fvgs),"order_block_count":len(obs),"source_integrity":source_integrity}
+           "fvg_count":len(fvgs),"order_block_count":len(obs),"source_integrity":source_integrity,"mtf_alignment":mtf_alignment}
     pattern={"regime":states.get("12M"),"weekly_bias":weekly,"location":state["daily_location"],
              "sweep":bool(sweep_event),"displacement":latest_disp["strength"] if latest_disp else "NONE",
              "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),"amd":amd.get("phase")}
