@@ -24,6 +24,33 @@ def structure_state(df):
 
 def weekly_bias(df): return structure_state(df)
 
+def mtf_structure_alignment(htf_df, ltf_df, htf_direction, tolerance_atr=0.35):
+    """Research-only HTF zone -> LTF CHoCH/BOS -> HTF target relationship."""
+    if htf_direction not in {"LONG", "SHORT"} or htf_df.empty or ltf_df.empty:
+        return {"status":"NOT_ESTABLISHED","reason":"insufficient_direction_or_data"}
+    hs=swings(htf_df)
+    if len(hs)<2 or len(ltf_df)<20:
+        return {"status":"NOT_ESTABLISHED","reason":"insufficient_confirmed_swings"}
+    recent=hs[-6:]
+    price=float(ltf_df.close.iloc[-1])
+    tr=(ltf_df.high-ltf_df.low).rolling(20).median().iloc[-1]
+    tolerance=float(tr*tolerance_atr) if pd.notna(tr) and tr>0 else 0.0
+    dist,zone=min(((abs(price-float(x[2])),x) for x in recent),key=lambda z:z[0])
+    arrived=dist<=tolerance if tolerance else False
+    shift=choch_bos(ltf_df,htf_direction)
+    target_kind="LOW" if htf_direction=="SHORT" else "HIGH"
+    targets=[x for x in hs if x[0]==target_kind and x[2] != zone[2]]
+    target=min(targets,key=lambda x:abs(float(x[2])-price)) if targets else None
+    status="ALIGNED" if arrived and (shift.get("choch") or shift.get("bos")) else "ZONE_ARRIVAL" if arrived else "NOT_ESTABLISHED"
+    return {"status":status,"htf_direction":htf_direction,
+            "zone":{"kind":zone[0],"price":float(zone[2]),"formed_at":zone[1],"confirmed_at":zone[3]},
+            "zone_distance":float(dist),"zone_tolerance":tolerance,
+            "arrival_time":ltf_df.index[-1] if arrived else None,
+            "choch":bool(shift.get("choch")),"bos":bool(shift.get("bos")),
+            "confirmation_time":shift.get("confirmation_time") if (shift.get("choch") or shift.get("bos")) else None,
+            "htf_target":{"kind":target[0],"price":float(target[2]),"formed_at":target[1],"confirmed_at":target[3]} if target else None,
+            "interpretation":"LTF CHoCH/BOS is evidence of structural alignment; it cannot override HTF authority or constitute an execution signal."}
+
 def choch_bos(df,direction):
     """Close-confirmed structural break against/with the prior confirmed sequence."""
     s=swings(df); highs=[x for x in s if x[0]=="HIGH"]; lows=[x for x in s if x[0]=="LOW"]
