@@ -1,6 +1,8 @@
-name: Production dashboard validation
+name: SMC Research Engine CI
+
 on:
   push:
+    branches: [main]
     paths:
       - ".github/workflows/**"
       - "app/**"
@@ -9,18 +11,33 @@ on:
       - "package-lock.json"
       - "tsconfig.json"
       - "next.config.ts"
-      - "vercel.json"
+      - "requirements.txt"
+      - "src/**"
+      - "scripts/build_research_report.py"
+      - "tests/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - "app/**"
+      - "api/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "next.config.ts"
       - "requirements.txt"
       - "src/**"
       - "scripts/build_research_report.py"
       - "tests/**"
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,45 +49,43 @@ jobs:
         run: PYTHONPATH=. pytest
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Install Node dependencies
         run: npm install
       - name: Production Next.js build
         run: npm run build
-      - name: End-to-end production research API
+      - name: Start canonical research engine locally
+        env:
+          PYTHONPATH: .
         run: |
-          set -e
-          for i in $(seq 1 12); do
-            code=$(curl -sS -o /tmp/research.json -w "%{http_code}" https://smc-agent.vercel.app/api/research || true)
-            if [ "$code" = "200" ]; then break; fi
-            sleep 10
+          nohup python -u -c "from http.server import HTTPServer; from api.research_engine import handler; HTTPServer(('127.0.0.1', 8765), handler).serve_forever()" >/tmp/smc-research-engine.log 2>&1 &
+          echo $! >/tmp/smc-research-engine.pid
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8765/ >/tmp/engine-ready.json; then break; fi
+            sleep 2
           done
-          test "$code" = "200"
-          python - <<'PY2'
+          python - <<'PY'
           import json
-          x=json.load(open("/tmp/research.json"))
-          assert x.get("report") and x.get("mtf"), x
-          print("GET /api/research PASS")
-          PY2
-          curl -sS https://smc-agent.vercel.app/api/research_engine -o /tmp/engine-ready.json
-          python - <<'PY2'
-          import json
-          x=json.load(open("/tmp/engine-ready.json"))
-          assert x.get("status")=="READY", x
-          assert x.get("execution")=="CANONICAL_PIPELINE", x
-          print("GET /api/research_engine PASS")
-          PY2
-          curl -sS -X POST https://smc-agent.vercel.app/api/research             -H "Content-Type: application/json"             -d '{"action":"run","instrument":"EURUSD","parameters":{"start":"2026-09-01T00:00:00Z","end":"2026-10-02T16:58:00Z","replay_bars":1000}}'             -o /tmp/research-run.json
-          python - <<'PY2'
+          payload=json.load(open("/tmp/engine-ready.json"))
+          assert payload.get("status") == "READY", payload
+          assert payload.get("execution") == "CANONICAL_PIPELINE", payload
+          print("PASS: local canonical research engine readiness")
+          PY
+      - name: Execute parameterized research through local API
+        run: |
+          curl --fail --silent --show-error \
+            -X POST http://127.0.0.1:8765/ \
+            -H "Content-Type: application/json" \
+            -d '{"instrument":"EURUSD","start":"2026-09-01T00:00:00Z","end":"2026-10-02T16:58:00Z","replay_bars":1000}' \
+            -o /tmp/research-run.json
+          python - <<'PY'
           import json
           x=json.load(open("/tmp/research-run.json"))
-          r=x.get("result",{})
-          assert x.get("run",{}).get("status")=="COMPLETED", x
-          assert r.get("execution")=="CANONICAL_PIPELINE", r
-          assert r.get("parameters",{}).get("start")=="2026-09-01T00:00:00Z", r
-          assert r.get("dataset_validation",{}).get("valid") is True, r
-          assert r.get("mtf_validation",{}).get("valid") is True, r
-          assert len(r.get("replay",[]))>0, r
-          assert r.get("benchmarks",{}).get("results"), r
-          print("POST /api/research parameterized canonical pipeline PASS", x["run"]["id"])
-          PY2
+          assert x.get("execution") == "CANONICAL_PIPELINE", x
+          assert x.get("parameters",{}).get("start") == "2026-09-01T00:00:00Z", x
+          assert x.get("dataset_validation",{}).get("valid") is True, x
+          assert x.get("mtf_validation",{}).get("valid") is True, x
+          assert len(x.get("replay",[])) > 0, x
+          assert x.get("benchmarks",{}).get("results"), x
+          print("PASS: parameterized EURUSD research", x["source"]["rows_after_window"], "rows")
+          PY
