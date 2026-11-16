@@ -51,7 +51,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
       - name: Production Next.js build
         run: npm run build
       - name: Start canonical research engine locally
