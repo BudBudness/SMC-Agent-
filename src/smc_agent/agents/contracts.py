@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-TIMEFRAME_ORDER = ("12M", "6M", "3M", "W", "D", "4H", "1H", "15M", "5M", "1M")
+TIMEFRAME_ORDER = ("12M", "6M", "3M", "W", "D", "4H", "1H", "30M", "15M", "5M", "1M")
 DIRECTIONAL = {"LONG", "SHORT", "NEUTRAL"}
 
 @dataclass(frozen=True)

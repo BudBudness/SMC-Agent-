@@ -1,6 +1,6 @@
 """Cross-timeframe structural agreement and contradiction analysis."""
 from dataclasses import dataclass, asdict
-ORDER=["12M","6M","3M","W","D","4H","1H","15M","5M","1M"]
+ORDER=["12M","6M","3M","W","D","4H","1H","30M","15M","5M","1M"]
 @dataclass
 class TimeframeEvidence:
     timeframe:str; state:str; evidence:list; status:str
