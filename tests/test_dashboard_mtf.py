@@ -1,6 +1,11 @@
 import pandas as pd
 
-from scripts.build_dashboard_mtf import asof_state
+from scripts.build_dashboard_mtf import ANALYSIS_TIMEFRAMES, TAIL_BARS, asof_state
+
+
+def test_all_analysis_timeframes_have_bounded_dashboard_tails():
+    assert set(ANALYSIS_TIMEFRAMES) <= TAIL_BARS.keys()
+    assert TAIL_BARS["30M"] > 0
 
 
 def test_full_history_asof_state_uses_confirmed_swings():

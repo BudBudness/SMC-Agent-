@@ -15,7 +15,7 @@ from smc_agent.contradictions import compare
 
 TAIL_BARS = {
     "12M": 25, "6M": 50, "3M": 100, "W": 260, "D": 520,
-    "4H": 1000, "1H": 2000, "15M": 4000, "5M": 5000, "1M": 10000,
+    "4H": 1000, "1H": 2000, "30M": 3000, "15M": 4000, "5M": 5000, "1M": 10000,
 }
 
 def asof_state(frame):
