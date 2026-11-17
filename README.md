@@ -8,7 +8,7 @@ Henryz SMC Intelligence is an investigation and intelligence system for reconstr
 
 ## Investigation hierarchy
 
-12M regime → 6M context → 3M macro structure → Weekly direction → Daily context → 4H delivery/AMD → 1H liquidity → 15M structure → 5M refinement → 1M precision context.
+12M regime → 6M context → 3M macro structure → Weekly (1W) direction → Daily (1D) context → 4H delivery/AMD → 1H liquidity → 30M context → 15M structure → 5M refinement → 1M precision context.
 
 Weekly structure is authoritative. Lower timeframes are retained as evidence and can be reported as contradictions rather than silently overriding higher-timeframe structure.
 
@@ -26,7 +26,7 @@ Weekly structure is authoritative. Lower timeframes are retained as evidence and
 
 ## Dashboard data architecture
 
-The live dashboard separates full-history structural intelligence from recent microstructure detail. The validated 2003→latest EUR/USD M1 history is reconstructed into all ten analysis timeframes in CI. A compact release artifact stores each timeframe's full-history state and bounded OHLC visualization tail, while the dashboard M1 window remains lightweight. This prevents partial 12M/6M/3M reconstruction from a 90-day slice.
+The live dashboard separates full-history structural intelligence from recent microstructure detail. The validated 2003→latest EUR/USD M1 history is reconstructed into all eleven analysis timeframes in CI. A compact release artifact stores each timeframe's full-history state and bounded OHLC visualization tail, while the dashboard M1 window remains lightweight. This prevents partial 12M/6M/3M reconstruction from a 90-day slice.
 
 The dashboard does not treat heuristic detector counts as predictive accuracy, and hypothesis outputs are presented as competing research hypotheses rather than ranked recommendations.
 

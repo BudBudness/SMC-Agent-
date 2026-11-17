@@ -10,11 +10,13 @@ TIMEFRAME_RULES = {
     "D": "D",
     "4H": "4h",
     "1H": "1h",
+    "30M": "30min",
     "15M": "15min",
     "5M": "5min",
     "1M": "1min",
 }
 
+TIMEFRAME_ALIASES = {"1W": "W", "1D": "D"}
 ANALYSIS_TIMEFRAMES = tuple(TIMEFRAME_RULES)
 
 
@@ -27,6 +29,7 @@ def resample(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
     in 2026). Research states must instead be timestamped at the last observed
     source candle inside each bucket.
     """
+    timeframe = TIMEFRAME_ALIASES.get(timeframe, timeframe)
     if timeframe not in TIMEFRAME_RULES:
         raise ValueError(f"unsupported timeframe: {timeframe}")
     if df.empty:
