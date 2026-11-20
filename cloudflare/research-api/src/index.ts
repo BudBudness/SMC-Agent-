@@ -69,6 +69,28 @@ async function verifyAccess(request: Request, env: Env): Promise<boolean> {
   }
 }
 
+function derLength(length: number): Uint8Array {
+  if (length < 128) return new Uint8Array([length]);
+  if (length < 256) return new Uint8Array([0x81, length]);
+  return new Uint8Array([0x82, (length >> 8) & 0xff, length & 0xff]);
+}
+
+function wrapPkcs1AsPkcs8(pkcs1: Uint8Array): Uint8Array {
+  const algorithm = new Uint8Array([0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00]);
+  const version = new Uint8Array([0x02,0x01,0x00]);
+  const octetLength = derLength(pkcs1.length);
+  const octetHeader = new Uint8Array([0x04, ...octetLength]);
+  const innerLength = version.length + algorithm.length + octetHeader.length + pkcs1.length;
+  const sequenceHeader = new Uint8Array([0x30, ...derLength(innerLength)]);
+  const result = new Uint8Array(sequenceHeader.length + innerLength);
+  let offset = 0;
+  for (const part of [sequenceHeader, version, algorithm, octetHeader, pkcs1]) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
+
 async function githubInstallationToken(env: Env): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
@@ -76,9 +98,11 @@ async function githubInstallationToken(env: Env): Promise<string> {
     iat: now - 30, exp: now + 540, iss: env.GITHUB_APP_ID
   }));
   const unsigned = `${header}.${payload}`;
-  const pem = env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, "\n")
-    .replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
-  const binary = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+  const pem = env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, "\n").trim();
+  const isPkcs1 = pem.includes("BEGIN RSA PRIVATE KEY");
+  const encodedKey = pem.replace(/-----BEGIN [A-Z ]+PRIVATE KEY-----|-----END [A-Z ]+PRIVATE KEY-----|\s/g, "");
+  const rawKey = Uint8Array.from(atob(encodedKey), c => c.charCodeAt(0));
+  const binary = isPkcs1 ? wrapPkcs1AsPkcs8(rawKey) : rawKey;
   const key = await crypto.subtle.importKey(
     "pkcs8", binary, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
   );
@@ -222,7 +246,7 @@ export default {
         const hash = String(body.result_sha256 || "");
         if (!key.startsWith(`research/${runId}/`) || !/^[a-f0-9]{64}$/.test(hash)) return json({ error: "Invalid artifact reference" }, 400);
         const object = await env.RESULTS.head(key);
-        if (!object || object.checksums.sha256 && object.checksums.sha256 !== hash) return json({ error: "Artifact integrity check failed" }, 409);
+        if (!object || object.customMetadata?.sha256 !== hash) return json({ error: "Artifact integrity check failed" }, 409);
         await env.DB.prepare("UPDATE research_runs SET status='COMPLETED', result_key=?, result_sha256=?, completed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?")
           .bind(key, hash, runId).run();
         await env.DB.prepare("INSERT OR IGNORE INTO research_reports (id, run_id, artifact_key, artifact_sha256) VALUES (?, ?, ?, ?)")
