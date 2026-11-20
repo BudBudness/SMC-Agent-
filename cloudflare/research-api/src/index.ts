@@ -104,8 +104,9 @@ async function githubInstallationToken(env: Env): Promise<string> {
   const encodedKey = pem.replace(/-----BEGIN [A-Z ]+PRIVATE KEY-----|-----END [A-Z ]+PRIVATE KEY-----|\s/g, "");
   const rawKey = Uint8Array.from(atob(encodedKey), c => c.charCodeAt(0));
   const binary = isPkcs1 ? wrapPkcs1AsPkcs8(rawKey) : rawKey;
+  const keyData = binary.buffer.slice(binary.byteOffset, binary.byteOffset + binary.byteLength) as ArrayBuffer;
   const key = await crypto.subtle.importKey(
-    "pkcs8", binary, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
+    "pkcs8", keyData, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
   );
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsigned));
   const appJwt = `${unsigned}.${b64url(signature)}`;
