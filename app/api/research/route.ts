@@ -16,8 +16,8 @@ async function canonical() {
     rel("EURUSD_MTF_dashboard.json.gz"),
   ]);
   return {
-    report: await reportResponse.json(),
-    mtf: JSON.parse(gunzipSync(Buffer.from(await mtfResponse.arrayBuffer())).toString("utf8")),
+    report: await reportResponse.json() as Record<string, any>,
+    mtf: JSON.parse(gunzipSync(Buffer.from(await mtfResponse.arrayBuffer())).toString("utf8")) as Record<string, any>,
   };
 }
 
