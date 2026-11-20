@@ -58,7 +58,8 @@ async function verifyAccess(request: Request, env: Env): Promise<boolean> {
     const publicKey = await crypto.subtle.importKey(
       "jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]
     );
-    const normalizedSignature = encodedSignature.replace(/-/g, "+").replace(/_/g, "/");\n    const signature = Uint8Array.from(atob(normalizedSignature + "=".repeat((4 - normalizedSignature.length % 4) % 4)), c => c.charCodeAt(0));
+    const normalizedSignature = encodedSignature.replace(/-/g, "+").replace(/_/g, "/");
+    const signature = Uint8Array.from(atob(normalizedSignature + "=".repeat((4 - normalizedSignature.length % 4) % 4)), c => c.charCodeAt(0));
     return crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5", publicKey, signature,
       new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
