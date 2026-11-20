@@ -17,6 +17,7 @@ interface Env {
   GITHUB_REPOSITORY: string;
   GITHUB_WORKFLOW_FILE: string;
   GITHUB_DEFAULT_REF: string;
+  GITHUB_SOURCE_COMMIT: string;
 }
 
 const json = (data: unknown, status = 200) =>
@@ -196,7 +197,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const replayBars = Number(parameters.replay_bars ?? 2000);
     if (!Number.isInteger(replayBars) || replayBars < 100 || replayBars > 10000) return json({ error: "replay_bars must be between 100 and 10000" }, 400);
     const runId = crypto.randomUUID();
-    const sourceCommit = String(body.source_commit || env.GITHUB_DEFAULT_REF);
+    const sourceCommit = String(body.source_commit || env.GITHUB_SOURCE_COMMIT);
+    if (!/^[a-f0-9]{40}$/i.test(sourceCommit)) return json({ error: "GITHUB_SOURCE_COMMIT must be a 40-character commit SHA" }, 503);
     const job: ResearchJob = { run_id: runId, source_commit: sourceCommit, parameters: { ...parameters, instrument } };
     await env.DB.prepare(
       "INSERT INTO research_runs (id, instrument, dataset, status, parameters_json, source_commit) VALUES (?, ?, ?, 'QUEUED', ?, ?)"
