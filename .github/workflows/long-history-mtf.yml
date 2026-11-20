@@ -4,6 +4,7 @@ name: Long-history MTF reconstruction
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - ".github/workflows/long-history-mtf.yml"
       - "scripts/fetch_long_history.py"
