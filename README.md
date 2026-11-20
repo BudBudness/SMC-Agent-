@@ -2,6 +2,19 @@
 
 Henryz SMC Intelligence is an investigation and intelligence system for reconstructing market structure, liquidity, Smart Money Concepts events, macro context, historical analogues, competing hypotheses, and evidence.
 
+## Platform architecture
+
+The canonical platform is **GitHub + Cloudflare**.
+
+- GitHub stores source, benchmark definitions, CI evidence, release provenance and the Python research engine.
+- Cloudflare Workers host the dashboard and research API.
+- Cloudflare D1 stores research-run metadata, hypotheses, evidence and report indexes.
+- Cloudflare Queues dispatch research jobs to GitHub Actions.
+- GitHub Actions runs the canonical Python engine at a pinned commit.
+- Cloudflare R2 stores immutable, checksum-verified research result artifacts.
+
+Vercel and Supabase are not target providers. The migration is tracked in [PR #4](https://github.com/BudBudness/SMC-Agent-/pull/4). The migration branch removes the Supabase-backed application API and legacy Vercel deployment configuration. Cloudflare resources, secrets, deployment, Supabase data reconciliation and live browser verification remain release gates; the branch is not yet a production deployment.
+
 ## Core pipeline
 
 **DATA → NORMALIZATION → MULTI-TIMEFRAME STATE → STRUCTURE → LIQUIDITY → SMC EVENTS → MACRO CONTEXT → HISTORICAL ANALOGUES → HYPOTHESES → EVIDENCE + CONTRADICTIONS → INVALIDATION CONDITIONS → INTELLIGENCE REPORT**
