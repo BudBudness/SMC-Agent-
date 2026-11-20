@@ -26,6 +26,10 @@
         "max_batch_size": 1,
         "max_retries": 5,
         "dead_letter_queue": "henryz-smc-research-jobs-dlq"
+      },
+      {
+        "queue": "henryz-smc-research-jobs-dlq",
+        "max_batch_size": 1
       }
     ]
   },
