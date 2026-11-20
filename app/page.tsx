@@ -31,7 +31,7 @@ export default function Home(){
     setRun({run:payload.run,result:payload.result,status:payload.run?.status});
     setRuns(v=>[payload.run,...v.filter(x=>x.id!==runId)]);
    }catch(e){
-    if(active) setRun(v=>({...v,polling_error:e instanceof Error?e.message:"Polling failed"}));
+    if(active) setRun((v:any)=>({...v,polling_error:e instanceof Error?e.message:"Polling failed"}));
    }
   },2500);
   return ()=>{active=false;clearTimeout(timer)};
