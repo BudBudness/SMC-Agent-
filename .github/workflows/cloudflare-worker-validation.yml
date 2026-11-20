@@ -1,0 +1,47 @@
+name: Cloudflare Worker validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "cloudflare/research-api/**"
+      - ".github/workflows/cloudflare-worker-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare/research-api/**"
+      - ".github/workflows/cloudflare-worker-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare/research-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: cloudflare/research-api/package.json
+      - name: Install Worker toolchain
+        run: npm install --no-audit --no-fund
+      - name: TypeScript validation
+        run: npm run typecheck
+      - name: Validate D1 migration SQL
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          sql=Path("migrations/0001_initial.sql").read_text()
+          db=sqlite3.connect(":memory:")
+          db.executescript(sql)
+          expected={"research_runs","research_reports","research_hypotheses","research_evidence","research_job_events"}
+          actual={row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert expected <= actual, (expected, actual)
+          print("PASS: D1 migration parses and creates all expected tables")
+          PY
