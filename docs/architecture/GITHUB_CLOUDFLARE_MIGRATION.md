@@ -79,13 +79,24 @@ The research engine is Python and must not be moved into a JavaScript Worker by 
 ## 5. Cutover safety
 Do not delete vercel.json, remove Supabase-backed code, drop tables, revoke credentials or change DNS before the replacement implementation is tested and a rollback path exists. These are migration/cutover operations, not preparatory cleanup. The final state must remove both providers; the intermediate migration branch may retain compatibility code until the replacement is ready.
 
-## 6. Current known blockers
-- app/api/research/route.ts still invokes /api/research_engine, relying on the Vercel Python-function route.
-- The same route still reads/writes Supabase REST resources (smc_research_runs, smc_reports, smc_hypotheses, smc_evidence).
-- vercel.json still defines the Python function deployment.
-- .github/workflows/long-history-mtf.yml still watches vercel.json.
-- app/page.tsx still labels research history as Supabase-persisted.
-- No Cloudflare Wrangler/OpenNext configuration or D1 schema was present in the inspected repository files.
-- No Cloudflare account/resource access was available to this execution environment at inspection time.
+## 6. Current migration state and blockers
 
-These blockers mean the provider migration is not complete and production certification remains withheld.
+### Completed in the migration branch
+- app/api/research/route.ts now proxies run, report, hypothesis and evidence operations to the Cloudflare research Worker through a service binding. It no longer calls the Vercel Python route or Supabase REST API.
+- app/page.tsx no longer identifies Supabase as the research-history provider and now polls asynchronous research jobs.
+- The Python engine remains canonical and is executed by scripts/run_research_job.py from the dispatched GitHub Actions workflow.
+- D1 schema, Worker API, Queue dispatch, GitHub App token minting, R2 result publishing, checksum metadata, callback lifecycle and dead-letter handling are implemented as code.
+- Root OpenNext/Wrangler configuration and a Cloudflare service binding are present.
+- GitHub Actions validation workflows are defined for the Worker, D1 SQL and OpenNext dashboard build.
+
+### Outstanding blockers
+- vercel.json remains as migration residue until the Cloudflare dashboard is deployed and rollback is verified. The new branch's application route no longer depends on it.
+- No Cloudflare D1 database, R2 bucket, Queues, Access application or Worker deployment has been provisioned or verified from this execution environment.
+- wrangler.jsonc contains a D1 database ID placeholder and Access settings placeholders; runtime secrets still need secure provisioning.
+- The GitHub App used by the Worker must be installed with Actions write and Contents read permissions; its private key and installation identifiers are not provisioned.
+- GitHub Actions requires scoped R2 credentials and the Worker callback secret in repository secrets, plus the R2 bucket and callback URL as repository variables.
+- The research-job workflow_dispatch file must exist on the default branch before the Worker can dispatch jobs; this migration branch must be merged only after the production rollout sequence is approved.
+- No Supabase data export/import has been performed. Existing historical run, hypothesis, report and evidence records must be exported and reconciled before the legacy database is retired.
+- The Cloudflare account connector is not available in this execution environment, preventing resource provisioning, migrations, deployment and live browser verification.
+
+The provider migration is therefore implemented as an isolated code baseline but not deployed. Production certification remains withheld.
