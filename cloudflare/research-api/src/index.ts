@@ -164,16 +164,16 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     if (resource === "runs") {
       const result = await env.DB.prepare(
         "SELECT id, instrument, dataset, status, parameters_json, result_key, result_sha256, error, source_commit, created_at, started_at, completed_at, updated_at FROM research_runs ORDER BY created_at DESC LIMIT 100"
-      ).all();
-      return json(result.results);
+      ).all<any>();
+      return json(result.results.map(row => ({ ...row, parameters: JSON.parse(row.parameters_json) })));
     }
     if (resource === "hypotheses") {
-      const result = await env.DB.prepare("SELECT * FROM research_hypotheses ORDER BY created_at DESC LIMIT 500").all();
-      return json(result.results);
+      const result = await env.DB.prepare("SELECT * FROM research_hypotheses ORDER BY created_at DESC LIMIT 500").all<any>();
+      return json(result.results.map(row => ({ ...row, data: JSON.parse(row.data_json) })));
     }
     if (resource === "evidence") {
-      const result = await env.DB.prepare("SELECT * FROM research_evidence ORDER BY created_at DESC LIMIT 500").all();
-      return json(result.results);
+      const result = await env.DB.prepare("SELECT * FROM research_evidence ORDER BY created_at DESC LIMIT 500").all<any>();
+      return json(result.results.map(row => ({ ...row, data: JSON.parse(row.data_json), provenance: JSON.parse(row.provenance_json) })));
     }
     if (resource === "report") {
       const runId = url.searchParams.get("run_id");
