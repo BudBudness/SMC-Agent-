@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "henryz-smc-research-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "henryz-smc-research",
+      "database_id": "REPLACE_WITH_CREATED_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "RESULTS", "bucket_name": "henryz-smc-research-results" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "RESEARCH_JOBS", "queue": "henryz-smc-research-jobs" }
+    ],
+    "consumers": [
+      {
+        "queue": "henryz-smc-research-jobs",
+        "max_batch_size": 1,
+        "max_retries": 5,
+        "dead_letter_queue": "henryz-smc-research-jobs-dlq"
+      }
+    ]
+  },
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "REPLACE_WITH_CLOUDFLARE_ACCESS_TEAM_DOMAIN",
+    "ACCESS_AUD": "REPLACE_WITH_CLOUDFLARE_ACCESS_APPLICATION_AUD",
+    "GITHUB_REPOSITORY": "BudBudness/SMC-Agent-",
+    "GITHUB_WORKFLOW_FILE": "research-job.yml",
+    "GITHUB_DEFAULT_REF": "main"
+  }
+}
