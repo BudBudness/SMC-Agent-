@@ -51,7 +51,7 @@ Protect the Worker route with a Cloudflare Access application. Set `ACCESS_TEAM_
 2. Worker inserts a QUEUED D1 run and sends a queue message.
 3. Queue consumer mints a short-lived GitHub App installation token and dispatches `.github/workflows/research-job.yml`.
 4. Workflow checks out the requested commit and executes `scripts/run_research_job.py`.
-5. Workflow writes `research/<run_id>/result.json` to R2 and sends the checksum to the Worker callback.
+5. Workflow writes `research/<run_id>/<workflow_run_id>-<attempt>/result.json` to R2 and sends the checksum to the Worker callback.
 6. Worker verifies the object exists and its SHA-256 checksum, then marks the D1 run COMPLETED.
 7. Client polls `GET /api/research?resource=run&run_id=<id>`; the result is included after completion.
 
