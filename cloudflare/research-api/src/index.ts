@@ -245,7 +245,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (new URL(request.url).pathname === "/health") return json({ ok: true, service: "henryz-smc-research-api" });
     if (new URL(request.url).pathname === "/internal/research-complete") {
-      if (request.method !== "POST" || request.headers.get("authorization") !== `Bearer ${env.CALLBACK_SECRET}`) {
+      if (request.method !== "POST" || !env.CALLBACK_SECRET || env.CALLBACK_SECRET.length < 32 || request.headers.get("authorization") !== `Bearer ${env.CALLBACK_SECRET}`) {
         return json({ error: "Unauthorized" }, 401);
       }
       const body = await request.json() as Record<string, any>;
