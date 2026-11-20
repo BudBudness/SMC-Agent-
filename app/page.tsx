@@ -17,21 +17,41 @@ export default function Home(){
  const[d,setD]=useState<any>(null),[error,setError]=useState(""),[view,setView]=useState("Workspace"),[tf,setTf]=useState("W"),[query,setQuery]=useState(""),[runs,setRuns]=useState<any[]>([]),[run,setRun]=useState<any>(null),[hyp,setHyp]=useState<any[]>([]),[evidence,setEvidence]=useState<any[]>([]);
  const load=async()=>{try{const urls=["/api/research","/api/research?resource=runs","/api/research?resource=hypotheses","/api/research?resource=evidence"];const [a,b,c,e]=await Promise.all(urls.map(u=>fetch(u,{cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x})));setD(a);setRuns(b||[]);setHyp(c||[]);setEvidence(e||[])}catch(e){setError(e instanceof Error?e.message:"Research data unavailable")}};
  useEffect(()=>{load()},[]);
+ useEffect(()=>{
+  const runId=run?.run?.id;
+  const status=run?.run?.status;
+  if(!runId||!["QUEUED","RUNNING"].includes(status)) return;
+  let active=true;
+  const timer=setTimeout(async()=>{
+   try{
+    const response=await fetch("/api/research?resource=run&run_id="+encodeURIComponent(runId),{cache:"no-store"});
+    const payload=await response.json();
+    if(!response.ok) throw Error(payload.error||"Unable to refresh research run");
+    if(!active) return;
+    setRun({run:payload.run,result:payload.result,status:payload.run?.status});
+    setRuns(v=>[payload.run,...v.filter(x=>x.id!==runId)]);
+   }catch(e){
+    if(active) setRun(v=>({...v,polling_error:e instanceof Error?e.message:"Polling failed"}));
+   }
+  },2500);
+  return ()=>{active=false;clearTimeout(timer)};
+ },[run]);
+
  if(error)return <main className="terminal error"><b>Research system unavailable</b><p>{error}</p></main>;
  if(!d)return <main className="terminal loading">Loading validated research system…</main>;
  const r=d.report||{},s=r.market_state||{},frames=d.mtf?.timeframes||{},source=d.source||r.dataset||{},events=arr(r.events),contradictions=arr(s.contradictions),analogue=r.analogue_research||{},selected=frames[tf]||{};
  const filtered=events.filter(x=>!query||JSON.stringify(x).toLowerCase().includes(query.toLowerCase()));
- const execute=async(parameters:any={})=>{ 
-  setRun({status:"RUNNING"});
+ const execute=async(parameters:any={})=>{
+  setRun({status:"SUBMITTING"});
   try{
     const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"run",instrument:r.symbol||"EURUSD",parameters})});
     const result=await response.json();
-    if(!response.ok) throw Error(result.error||"Research run failed");
+    if(!response.ok) throw Error(result.error||"Research run submission failed");
     setRun(result);
-    setRuns(v=>[result.run,...v]);
+    if(result.run?.id) setRuns(v=>[result.run,...v.filter(x=>x.id!==result.run.id)]);
     setView("Active Research");
   }catch(e){
-    setRun({status:"FAILED",error:e instanceof Error?e.message:"Run failed"});
+    setRun({status:"FAILED",error:e instanceof Error?e.message:"Run submission failed"});
   }
  };
  const addHyp=async()=>{
