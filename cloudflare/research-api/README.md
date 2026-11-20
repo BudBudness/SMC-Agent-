@@ -43,7 +43,7 @@ The GitHub App installation must have access to this repository and the minimum 
 
 The GitHub Actions workflow also requires repository secrets `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`, and `RESEARCH_WORKER_CALLBACK_SECRET`; repository variables `CLOUDFLARE_R2_BUCKET` and `RESEARCH_WORKER_CALLBACK_URL`. Use an R2-scoped access key, not an account-wide API token. The callback URL is the Worker URL plus `/internal/research-complete`.
 
-Protect the Worker route with a Cloudflare Access application. Set `ACCESS_TEAM_DOMAIN` to the Access team hostname (without scheme) and `ACCESS_AUD` to the Access application AUD. The Worker verifies the Access JWT signature, issuer, audience and expiry. The internal callback uses a separate shared secret and bypasses the interactive Access JWT.
+Protect the dashboard hostname with a Cloudflare Access application and an allow policy for the intended users. The Next.js route forwards the inbound `Cf-Access-Jwt-Assertion` header through the service binding. Set `ACCESS_TEAM_DOMAIN` to the Access team hostname (without scheme) and `ACCESS_AUD` to that dashboard Access application's AUD. The research Worker verifies the JWT signature, issuer, audience, expiry and not-before time before serving API operations. The internal GitHub Actions callback bypasses the interactive Access JWT only at `/internal/research-complete` and requires a separate high-entropy bearer secret. If the API Worker is also exposed directly, keep the same JWT verification enabled; do not rely on a hostname being private.
 
 ## Dispatch and result lifecycle
 
