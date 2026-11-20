@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { gunzipSync } from "node:zlib";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 const BASE = "https://github.com/BudBudness/SMC-Agent-/releases/download/research-data";
 
@@ -21,9 +22,7 @@ async function canonical() {
 }
 
 function researchApiUrl(path: string): string {
-  const base = process.env.RESEARCH_API_URL;
-  if (!base) throw new Error("RESEARCH_API_URL is not configured for the Cloudflare deployment");
-  return base.replace(/\\/$/, "") + path;
+  return path;
 }
 
 async function proxy(request: Request, path: string, init: RequestInit = {}) {
@@ -31,11 +30,11 @@ async function proxy(request: Request, path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (accessJwt) headers.set("Cf-Access-Jwt-Assertion", accessJwt);
   if (init.body) headers.set("Content-Type", "application/json");
-  const response = await fetch(researchApiUrl(path), {
+  const { env } = getCloudflareContext();
+  const response = await env.RESEARCH_API.fetch(new Request("https://research-api.internal" + researchApiUrl(path), {
     ...init,
     headers,
-    cache: "no-store",
-  });
+  }));
   const body = await response.text();
   return new Response(body, {
     status: response.status,
