@@ -83,6 +83,8 @@ jobs:
           WORKER_CALLBACK_SECRET: ${{ secrets.RESEARCH_WORKER_CALLBACK_SECRET }}
           RUN_ID: ${{ inputs.run_id }}
           SHA256: ${{ steps.digest.outputs.sha256 }}
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           test -n "$WORKER_CALLBACK_URL"
           test -n "$WORKER_CALLBACK_SECRET"
