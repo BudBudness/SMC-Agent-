@@ -77,7 +77,7 @@ The research engine is Python and must not be moved into a JavaScript Worker by 
 - Record tested URL, commit SHA, UTC timestamp and evidence.
 
 ## 5. Cutover safety
-Do not delete vercel.json, remove Supabase-backed code, drop tables, revoke credentials or change DNS before the replacement implementation is tested and a rollback path exists. These are migration/cutover operations, not preparatory cleanup. The final state must remove both providers; the intermediate migration branch may retain compatibility code until the replacement is ready.
+Do not merge the migration branch into main, drop legacy data, revoke credentials or change production DNS before the Cloudflare replacement is deployed, tested and a rollback path exists. The migration branch removes vercel.json and the Supabase-backed application route because those code paths have been replaced; main remains unchanged until the pull request is merged. Preserve any legacy database data until export, reconciliation and restore verification are complete.
 
 ## 6. Current migration state and blockers
 
@@ -90,7 +90,7 @@ Do not delete vercel.json, remove Supabase-backed code, drop tables, revoke cred
 - GitHub Actions validation workflows are defined for the Worker, D1 SQL and OpenNext dashboard build.
 
 ### Outstanding blockers
-- vercel.json remains as migration residue until the Cloudflare dashboard is deployed and rollback is verified. The new branch's application route no longer depends on it.
+- vercel.json has been removed from the isolated migration branch. The existing main branch remains unchanged until the pull request is merged.
 - No Cloudflare D1 database, R2 bucket, Queues, Access application or Worker deployment has been provisioned or verified from this execution environment.
 - wrangler.jsonc contains a D1 database ID placeholder and Access settings placeholders; runtime secrets still need secure provisioning.
 - The GitHub App used by the Worker must be installed with Actions write and Contents read permissions; its private key and installation identifiers are not provisioned.
