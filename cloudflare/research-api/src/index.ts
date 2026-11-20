@@ -148,7 +148,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (url.pathname === "/health") return json({ ok: true, service: "henryz-smc-research-api" });
 
   if (request.method === "GET") {
-    const resource = url.searchParams.get("resource") || "runs";\n    if (resource === "run") {\n      const runId = url.searchParams.get("run_id");\n      if (!runId) return json({ error: "run_id is required" }, 400);\n      const row = await env.DB.prepare("SELECT * FROM research_runs WHERE id = ?").bind(runId).first<any>();\n      if (!row) return json({ error: "Run not found" }, 404);\n      let result = null;\n      if (row.result_key) { const object = await env.RESULTS.get(row.result_key); if (object) result = await object.json(); }\n      return json({ run: { ...row, parameters: JSON.parse(row.parameters_json) }, result });\n    }
+    const resource = url.searchParams.get("resource") || "runs";
+    if (resource === "run") {\n      const runId = url.searchParams.get("run_id");\n      if (!runId) return json({ error: "run_id is required" }, 400);\n      const row = await env.DB.prepare("SELECT * FROM research_runs WHERE id = ?").bind(runId).first<any>();\n      if (!row) return json({ error: "Run not found" }, 404);\n      let result = null;\n      if (row.result_key) { const object = await env.RESULTS.get(row.result_key); if (object) result = await object.json(); }\n      return json({ run: { ...row, parameters: JSON.parse(row.parameters_json) }, result });\n    }
     if (resource === "runs") {
       const result = await env.DB.prepare(
         "SELECT id, instrument, dataset, status, parameters_json, result_key, result_sha256, error, source_commit, created_at, started_at, completed_at, updated_at FROM research_runs ORDER BY created_at DESC LIMIT 100"
@@ -230,7 +231,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (new URL(request.url).pathname === "/health") return json({ ok: true, service: "henryz-smc-research-api" });\n    if (new URL(request.url).pathname === "/internal/research-complete") {
+    if (new URL(request.url).pathname === "/health") return json({ ok: true, service: "henryz-smc-research-api" });
+    if (new URL(request.url).pathname === "/internal/research-complete") {
       if (request.method !== "POST" || request.headers.get("authorization") !== `Bearer ${env.CALLBACK_SECRET}`) {
         return json({ error: "Unauthorized" }, 401);
       }
