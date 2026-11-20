@@ -45,9 +45,10 @@ async function verifyAccess(request: Request, env: Env): Promise<boolean> {
     const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
     const header = decodePart(encodedHeader);
     const payload = decodePart(encodedPayload);
-    if (!header.kid || payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) return false;
+    if (header.alg !== "RS256" || !header.kid || payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) return false;
     if (!Array.isArray(payload.aud) || !payload.aud.includes(env.ACCESS_AUD)) return false;
-    if (typeof payload.exp !== "number" || payload.exp <= Math.floor(Date.now() / 1000)) return false;
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp !== "number" || payload.exp <= now || (typeof payload.nbf === "number" && payload.nbf > now)) return false;
 
     const certsResponse = await fetch(`https://${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`);
     if (!certsResponse.ok) return false;
@@ -279,13 +280,20 @@ export default {
 
   async queue(batch: MessageBatch<ResearchJob>, env: Env): Promise<void> {
     for (const message of batch.messages) {
+      if (batch.queue === "henryz-smc-research-jobs-dlq") {
+        await env.DB.prepare("UPDATE research_runs SET status='FAILED', error='Queue dispatch exceeded retry limit', completed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status IN ('QUEUED','RUNNING')")
+          .bind(message.body.run_id).run();
+        await recordEvent(env, message.body.run_id, "FAILED", { reason: "dead_letter_queue" });
+        message.ack();
+        continue;
+      }
       try {
         await dispatchResearch(message.body, env);
         await env.DB.prepare("UPDATE research_runs SET status='RUNNING', started_at=COALESCE(started_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='QUEUED'")
           .bind(message.body.run_id).run();
         await recordEvent(env, message.body.run_id, "DISPATCHED", { source_commit: message.body.source_commit });
         message.ack();
-      } catch (error) {
+      } catch {
         message.retry();
       }
     }
