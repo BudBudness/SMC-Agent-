@@ -99,6 +99,30 @@ jobs:
             -H "Content-Type: application/json" \
             --data-binary @/tmp/callback.json
 
+      - name: Report failed research job to Worker
+        if: failure()
+        env:
+          WORKER_CALLBACK_URL: ${{ vars.RESEARCH_WORKER_CALLBACK_URL }}
+          WORKER_CALLBACK_SECRET: ${{ secrets.RESEARCH_WORKER_CALLBACK_SECRET }}
+          RUN_ID: ${{ inputs.run_id }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ -n "$WORKER_CALLBACK_URL" ] && [ -n "$WORKER_CALLBACK_SECRET" ]; then
+            python - <<'PY' > /tmp/failure-callback.json
+            import json, os
+            print(json.dumps({
+              "run_id": os.environ["RUN_ID"],
+              "status": "FAILED",
+              "error": "GitHub Actions research job failed; inspect workflow run " + os.environ["GH_RUN_ID"]
+            }))
+            PY
+            curl --fail --silent --show-error \
+              -X POST "$WORKER_CALLBACK_URL" \
+              -H "Authorization: Bearer $WORKER_CALLBACK_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary @/tmp/failure-callback.json
+          fi
+
       - name: Upload diagnostic artifact
         if: always()
         uses: actions/upload-artifact@v4
