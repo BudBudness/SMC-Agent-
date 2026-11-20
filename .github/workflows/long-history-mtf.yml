@@ -25,7 +25,6 @@ on:
       - "package.json"
       - "tsconfig.json"
       - "next.config.ts"
-      - "vercel.json"
   schedule:
     - cron: "30 2 * * 1"
 
