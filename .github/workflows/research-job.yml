@@ -1,0 +1,138 @@
+name: Cloudflare research job
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: D1 research run identifier
+        required: true
+        type: string
+      source_commit:
+        description: Exact Git commit to execute
+        required: true
+        type: string
+      parameters_json:
+        description: Validated research parameter object
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-job-${{ inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout requested source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install engine dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Execute canonical Python research engine
+        env:
+          PYTHONPATH: .
+          PARAMETERS_JSON: ${{ inputs.parameters_json }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          python scripts/run_research_job.py \
+            --parameters "$PARAMETERS_JSON" \
+            --output "research-result.json"
+
+      - name: Calculate artifact checksum
+        id: digest
+        run: echo "sha256=$(sha256sum research-result.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish immutable result to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
+          RUN_ID: ${{ inputs.run_id }}
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$CF_ACCOUNT_ID"
+          test -n "$R2_BUCKET"
+          aws s3 cp research-result.json \
+            "s3://$R2_BUCKET/research/$RUN_ID/$GH_RUN_ID-$GH_RUN_ATTEMPT/result.json" \
+            --endpoint-url "https://$CF_ACCOUNT_ID.r2.cloudflarestorage.com" \
+            --content-type "application/json" \
+            --metadata "sha256=${{ steps.digest.outputs.sha256 }}"
+
+      - name: Complete D1 run through authenticated Worker callback
+        env:
+          WORKER_CALLBACK_URL: ${{ vars.RESEARCH_WORKER_CALLBACK_URL }}
+          WORKER_CALLBACK_SECRET: ${{ secrets.RESEARCH_WORKER_CALLBACK_SECRET }}
+          RUN_ID: ${{ inputs.run_id }}
+          SHA256: ${{ steps.digest.outputs.sha256 }}
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          test -n "$WORKER_CALLBACK_URL"
+          test -n "$WORKER_CALLBACK_SECRET"
+          python - <<'PY' > /tmp/callback.json
+          import json, os
+          run_id=os.environ["RUN_ID"]
+          print(json.dumps({
+            "run_id": run_id,
+            "status": "COMPLETED",
+            "result_key": f"research/{run_id}/" + os.environ["GH_RUN_ID"] + "-" + os.environ["GH_RUN_ATTEMPT"] + "/result.json",
+            "result_sha256": os.environ["SHA256"]
+          }, separators=(",", ":")))
+          PY
+          curl --fail --silent --show-error \
+            -X POST "$WORKER_CALLBACK_URL" \
+            -H "Authorization: Bearer $WORKER_CALLBACK_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/callback.json
+
+      - name: Report failed research job to Worker
+        if: failure()
+        env:
+          WORKER_CALLBACK_URL: ${{ vars.RESEARCH_WORKER_CALLBACK_URL }}
+          WORKER_CALLBACK_SECRET: ${{ secrets.RESEARCH_WORKER_CALLBACK_SECRET }}
+          RUN_ID: ${{ inputs.run_id }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ -n "$WORKER_CALLBACK_URL" ] && [ -n "$WORKER_CALLBACK_SECRET" ]; then
+            python - <<'PY' > /tmp/failure-callback.json
+            import json, os
+            print(json.dumps({
+              "run_id": os.environ["RUN_ID"],
+              "status": "FAILED",
+              "error": "GitHub Actions research job failed; inspect workflow run " + os.environ["GH_RUN_ID"]
+            }))
+            PY
+            curl --fail --silent --show-error \
+              -X POST "$WORKER_CALLBACK_URL" \
+              -H "Authorization: Bearer $WORKER_CALLBACK_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary @/tmp/failure-callback.json
+          fi
+
+      - name: Upload diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-job-${{ inputs.run_id }}
+          path: research-result.json
+          if-no-files-found: ignore
+          retention-days: 14

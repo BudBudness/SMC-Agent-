@@ -15,23 +15,43 @@ function download(name:string,data:any){const a=document.createElement("a");a.hr
 
 export default function Home(){
  const[d,setD]=useState<any>(null),[error,setError]=useState(""),[view,setView]=useState("Workspace"),[tf,setTf]=useState("W"),[query,setQuery]=useState(""),[runs,setRuns]=useState<any[]>([]),[run,setRun]=useState<any>(null),[hyp,setHyp]=useState<any[]>([]),[evidence,setEvidence]=useState<any[]>([]);
- const load=async()=>{try{const urls=["/api/research","/api/research?resource=runs","/api/research?resource=hypotheses","/api/research?resource=evidence"];const [a,b,c,e]=await Promise.all(urls.map(u=>fetch(u,{cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x})));setD(a);setRuns(b||[]);setHyp(c||[]);setEvidence(e||[])}catch(e){setError(e instanceof Error?e.message:"Research data unavailable")}};
+ const load=async()=>{try{const urls=["/api/research","/api/research?resource=runs","/api/research?resource=hypotheses","/api/research?resource=evidence"];const [a,b,c,e]=await Promise.all(urls.map(u=>fetch(u,{cache:"no-store"}).then(async r=>{const x:any=await r.json();if(!r.ok)throw Error(x.error);return x})));setD(a);setRuns(b||[]);setHyp(c||[]);setEvidence(e||[])}catch(e){setError(e instanceof Error?e.message:"Research data unavailable")}};
  useEffect(()=>{load()},[]);
+ useEffect(()=>{
+  const runId=run?.run?.id;
+  const status=run?.run?.status;
+  if(!runId||!["QUEUED","RUNNING"].includes(status)) return;
+  let active=true;
+  const timer=setTimeout(async()=>{
+   try{
+    const response=await fetch("/api/research?resource=run&run_id="+encodeURIComponent(runId),{cache:"no-store"});
+    const payload:any=await response.json();
+    if(!response.ok) throw Error(payload.error||"Unable to refresh research run");
+    if(!active) return;
+    setRun({run:payload.run,result:payload.result,status:payload.run?.status});
+    setRuns(v=>[payload.run,...v.filter(x=>x.id!==runId)]);
+   }catch(e){
+    if(active) setRun((v:any)=>({...v,polling_error:e instanceof Error?e.message:"Polling failed"}));
+   }
+  },2500);
+  return ()=>{active=false;clearTimeout(timer)};
+ },[run]);
+
  if(error)return <main className="terminal error"><b>Research system unavailable</b><p>{error}</p></main>;
  if(!d)return <main className="terminal loading">Loading validated research system…</main>;
  const r=d.report||{},s=r.market_state||{},frames=d.mtf?.timeframes||{},source=d.source||r.dataset||{},events=arr(r.events),contradictions=arr(s.contradictions),analogue=r.analogue_research||{},selected=frames[tf]||{};
  const filtered=events.filter(x=>!query||JSON.stringify(x).toLowerCase().includes(query.toLowerCase()));
- const execute=async(parameters:any={})=>{ 
-  setRun({status:"RUNNING"});
+ const execute=async(parameters:any={})=>{
+  setRun({status:"SUBMITTING"});
   try{
     const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"run",instrument:r.symbol||"EURUSD",parameters})});
-    const result=await response.json();
-    if(!response.ok) throw Error(result.error||"Research run failed");
+    const result:any=await response.json();
+    if(!response.ok) throw Error(result.error||"Research run submission failed");
     setRun(result);
-    setRuns(v=>[result.run,...v]);
+    if(result.run?.id) setRuns(v=>[result.run,...v.filter(x=>x.id!==result.run.id)]);
     setView("Active Research");
   }catch(e){
-    setRun({status:"FAILED",error:e instanceof Error?e.message:"Run failed"});
+    setRun({status:"FAILED",error:e instanceof Error?e.message:"Run submission failed"});
   }
  };
  const addHyp=async()=>{
@@ -55,7 +75,7 @@ export default function Home(){
  let content:any=workspace;
  if(view==="New Research")content=<><Head title="New Research" sub="Execute the canonical parameterized research pipeline and persist its result."/><Panel title="Research configuration"><div className="form"><label>Instrument<select><option>EURUSD</option></select></label><label>Start (UTC)<input id="research-start" type="datetime-local" defaultValue="2026-09-01T00:00"/></label><label>End (UTC)<input id="research-end" type="datetime-local" defaultValue="2026-10-02T16:58"/></label><label>Replay bars<input id="research-replay" type="number" min="100" max="10000" defaultValue="2000"/></label><label>Hierarchy<select><option>12M → 1M</option></select></label></div><button className="primary" onClick={()=>{const s=(document.getElementById("research-start") as HTMLInputElement)?.value;const e=(document.getElementById("research-end") as HTMLInputElement)?.value;const n=Number((document.getElementById("research-replay") as HTMLInputElement)?.value||2000);execute({start:s?new Date(s).toISOString():null,end:e?new Date(e).toISOString():null,replay_bars:n})}}>START RESEARCH RUN</button></Panel></>;
  if(view==="Active Research")content=<><Head title="Active Research" sub="Persisted canonical research-engine execution result."/><Panel title="Run"><KV k="Run ID" v={run?.run?.id}/><KV k="Status" v={run?.run?.status||run?.status}/><KV k="Execution" v={active?.execution}/><KV k="Engine" v={active?.engine_version}/><KV k="Dataset" v={active?.dataset?.artifact}/><KV k="Window" v={active?.parameters?.start+" → "+active?.parameters?.end}/><KV k="Replay bars" v={active?.replay?.length}/><KV k="Events" v={active?.events?.length}/></Panel><Panel title="Executed benchmarks"><Table rows={active?.benchmarks?Object.entries(active.benchmarks.results||{}).map(([metric,result])=>({metric,result})):[]}/></Panel></>;
- if(view==="Research History")content=<><Head title="Research History" sub="Persisted research runs in Supabase."/><Panel title="Runs"><Table rows={runs}/></Panel></>;
+ if(view==="Research History")content=<><Head title="Research History" sub="Persisted research runs."/><Panel title="Runs"><Table rows={runs}/></Panel></>;
  if(view==="MTF Structure")content=<><Head title="MTF Structure" sub="12M regime → 6M context → 3M structure → Weekly authority → lower timeframe evidence."/><Panel title="Timeframe hierarchy"><Table rows={TFS.map(x=>({timeframe:x,bars:frames[x]?.bars,state:frames[x]?.state,start:frames[x]?.start,end:frames[x]?.end}))}/></Panel><Panel title={"Confirmed structure · "+tf}><Table rows={[...arr(selected.confirmed_highs).map(x=>({type:"HIGH",value:x?.price??x?.value??x})),...arr(selected.confirmed_lows).map(x=>({type:"LOW",value:x?.price??x?.value??x}))]}/></Panel></>;
  if(view==="Liquidity")content=<><Head title="Liquidity" sub="Observed liquidity formations and sweeps."/><Panel title="Liquidity observations"><Table rows={events.filter(x=>/liquidity|sweep/i.test(String(x.name||x.type)))}/></Panel></>;
  if(view==="Events")content=<><Head title="Events" sub="Searchable chronological event ledger."/><Panel title="Events"><input className="search-wide" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Filter…"/><Table rows={filtered}/></Panel></>;

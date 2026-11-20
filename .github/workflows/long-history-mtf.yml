@@ -4,6 +4,7 @@ name: Long-history MTF reconstruction
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - ".github/workflows/long-history-mtf.yml"
       - "scripts/fetch_long_history.py"
@@ -25,7 +26,6 @@ on:
       - "package.json"
       - "tsconfig.json"
       - "next.config.ts"
-      - "vercel.json"
   schedule:
     - cron: "30 2 * * 1"
 
