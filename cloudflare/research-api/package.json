@@ -1,0 +1,17 @@
+{
+  "name": "henryz-smc-cloudflare-research-api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 migrations apply henryz-smc-research --local",
+    "db:remote": "wrangler d1 migrations apply henryz-smc-research --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250514.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.0.0"
+  }
+}
