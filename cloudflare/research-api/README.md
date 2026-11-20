@@ -19,7 +19,7 @@ Create these resources in the target Cloudflare account before deployment:
 - Queue: `henryz-smc-research-jobs`
 - Dead-letter Queue: `henryz-smc-research-jobs-dlq`
 
-Update `wrangler.jsonc` with the real D1 database ID and Cloudflare Access team domain/application AUD. The queue names and R2 bucket names are fixed by the configuration.
+Update `wrangler.jsonc` with the real D1 database ID, Cloudflare Access team domain/application AUD, and the exact 40-character Git commit SHA deployed to this Worker as `GITHUB_SOURCE_COMMIT`. `GITHUB_DEFAULT_REF` remains the branch containing the workflow_dispatch definition (normally `main`). This separates the workflow-dispatch ref from the pinned engine source commit so every run is reproducible. The queue names and R2 bucket names are fixed by the configuration.
 
 Apply the migration only after the D1 database exists:
 
