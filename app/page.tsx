@@ -15,7 +15,7 @@ function download(name:string,data:any){const a=document.createElement("a");a.hr
 
 export default function Home(){
  const[d,setD]=useState<any>(null),[error,setError]=useState(""),[view,setView]=useState("Workspace"),[tf,setTf]=useState("W"),[query,setQuery]=useState(""),[runs,setRuns]=useState<any[]>([]),[run,setRun]=useState<any>(null),[hyp,setHyp]=useState<any[]>([]),[evidence,setEvidence]=useState<any[]>([]);
- const load=async()=>{try{const urls=["/api/research","/api/research?resource=runs","/api/research?resource=hypotheses","/api/research?resource=evidence"];const [a,b,c,e]=await Promise.all(urls.map(u=>fetch(u,{cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x})));setD(a);setRuns(b||[]);setHyp(c||[]);setEvidence(e||[])}catch(e){setError(e instanceof Error?e.message:"Research data unavailable")}};
+ const load=async()=>{try{const urls=["/api/research","/api/research?resource=runs","/api/research?resource=hypotheses","/api/research?resource=evidence"];const [a,b,c,e]=await Promise.all(urls.map(u=>fetch(u,{cache:"no-store"}).then(async r=>{const x:any=await r.json();if(!r.ok)throw Error(x.error);return x})));setD(a);setRuns(b||[]);setHyp(c||[]);setEvidence(e||[])}catch(e){setError(e instanceof Error?e.message:"Research data unavailable")}};
  useEffect(()=>{load()},[]);
  useEffect(()=>{
   const runId=run?.run?.id;
@@ -25,7 +25,7 @@ export default function Home(){
   const timer=setTimeout(async()=>{
    try{
     const response=await fetch("/api/research?resource=run&run_id="+encodeURIComponent(runId),{cache:"no-store"});
-    const payload=await response.json();
+    const payload:any=await response.json();
     if(!response.ok) throw Error(payload.error||"Unable to refresh research run");
     if(!active) return;
     setRun({run:payload.run,result:payload.result,status:payload.run?.status});
@@ -45,7 +45,7 @@ export default function Home(){
   setRun({status:"SUBMITTING"});
   try{
     const response=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"run",instrument:r.symbol||"EURUSD",parameters})});
-    const result=await response.json();
+    const result:any=await response.json();
     if(!response.ok) throw Error(result.error||"Research run submission failed");
     setRun(result);
     if(result.run?.id) setRuns(v=>[result.run,...v.filter(x=>x.id!==result.run.id)]);
