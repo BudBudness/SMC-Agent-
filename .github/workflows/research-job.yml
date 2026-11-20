@@ -64,13 +64,15 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
           RUN_ID: ${{ inputs.run_id }}
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           test -n "$AWS_ACCESS_KEY_ID"
           test -n "$AWS_SECRET_ACCESS_KEY"
           test -n "$CF_ACCOUNT_ID"
           test -n "$R2_BUCKET"
           aws s3 cp research-result.json \
-            "s3://$R2_BUCKET/research/$RUN_ID/result.json" \
+            "s3://$R2_BUCKET/research/$RUN_ID/$GH_RUN_ID-$GH_RUN_ATTEMPT/result.json" \
             --endpoint-url "https://$CF_ACCOUNT_ID.r2.cloudflarestorage.com" \
             --content-type "application/json" \
             --metadata "sha256=${{ steps.digest.outputs.sha256 }}"
@@ -90,7 +92,7 @@ jobs:
           print(json.dumps({
             "run_id": run_id,
             "status": "COMPLETED",
-            "result_key": f"research/{run_id}/result.json",
+            "result_key": f"research/{run_id}/" + os.environ["GH_RUN_ID"] + "-" + os.environ["GH_RUN_ATTEMPT"] + "/result.json",
             "result_sha256": os.environ["SHA256"]
           }, separators=(",", ":")))
           PY
